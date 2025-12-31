@@ -9,8 +9,8 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Vue 3 -->
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
-    <!-- Lightweight Charts -->
-    <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Custom CSS -->
@@ -170,9 +170,14 @@
                     </div>
 
                     <div class="flex justify-between items-start mb-4 relative z-10">
-                        <div>
-                            <h2 class="text-4xl font-black tracking-tight">{{ stockDetails.symbol }}</h2>
-                            <p class="text-slate-300 font-medium">{{ stockDetails.name }}</p>
+                        <div class="flex items-center gap-4">
+                            <img v-if="stockDetails.logo_url" :src="stockDetails.logo_url"
+                                class="w-16 h-16 rounded-lg bg-white p-1 object-contain shadow-lg" alt="Logo"
+                                @error="$event.target.style.display='none'">
+                            <div>
+                                <h2 class="text-4xl font-black tracking-tight">{{ stockDetails.symbol }}</h2>
+                                <p class="text-slate-300 font-medium">{{ stockDetails.name }}</p>
+                            </div>
                         </div>
                     </div>
 

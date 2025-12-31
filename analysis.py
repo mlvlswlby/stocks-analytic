@@ -182,4 +182,71 @@ def generate_recommendation(df):
                 status = "Above" if current_price > ma_val else "Below"
                 trend_details[f'MA_{ma}'] = {"value": ma_val, "status": status}
     
+    
     return rec, score, reasons, trend_details
+
+def calculate_forecast(df: pd.DataFrame, days=90):
+    """
+    Simple linear regression forecast for next 90 days based on last 6 months trend.
+    """
+    if df.empty:
+        return []
+        
+    # Use last 6 months (~126 trading days) for trend training
+    train_df = df.iloc[-126:].copy()
+    if len(train_df) < 10:
+        return []
+
+    y = train_df['Close'].values
+    x = np.arange(len(y))
+    
+    # Linear Regression: y = mx + c
+    A = np.vstack([x, np.ones(len(x))]).T
+    m, c = np.linalg.lstsq(A, y, rcond=None)[0]
+    
+    # Generate future dates
+    last_date = df.index[-1]
+    future_dates = [last_date + pd.Timedelta(days=i) for i in range(1, days + 1)]
+    
+    # Project prices
+    last_x = x[-1]
+    future_x = np.arange(last_x + 1, last_x + 1 + days)
+    future_y = m * future_x + c
+    
+    forecast_data = []
+    for date, price in zip(future_dates, future_y):
+        forecast_data.append({
+            "time": str(date.date()),
+            "value": max(0, price) # Price cannot be negative
+        })
+        
+    return forecast_data
+
+def calculate_seasonal(df: pd.DataFrame):
+    """
+    Returns data grouped by year for the last 3 years to compare seasonality.
+    """
+    seasonal_data = {}
+    
+    # Ensure index is datetime
+    if not isinstance(df.index, pd.DatetimeIndex):
+        df.index = pd.to_datetime(df.index)
+        
+    current_year = df.index[-1].year
+    years = [current_year, current_year - 1, current_year - 2]
+    
+    for year in years:
+        # Filter data for specific year
+        year_data = df[df.index.year == year]
+        if not year_data.empty:
+            # We normalize 'time' to be MM-DD so they can overlay on same x-axis
+            data_points = []
+            for date, row in year_data.iterrows():
+                # specific format for chart.js labels? just MM-DD
+                data_points.append({
+                    "label": f"{date.month}-{date.day}", # Simplified Day
+                    "value": row['Close']
+                })
+            seasonal_data[year] = data_points
+            
+    return seasonal_data

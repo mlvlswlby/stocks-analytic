@@ -309,7 +309,10 @@ const App = {
             loadStock,
             goBack,
             changeTimeframe,
-            getScoreColor
+            getScoreColor,
+            mainChartCanvas,
+            forecastChartCanvas,
+            seasonalChartCanvas
         };
     }
 };

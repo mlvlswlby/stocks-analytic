@@ -10,10 +10,10 @@ import math
 import os
 
 try:
-    from .analysis import calculate_technicals, detect_candle_patterns, detect_chart_patterns, generate_recommendation
+    from .analysis import calculate_technicals, detect_candle_patterns, detect_chart_patterns, generate_recommendation, calculate_forecast, calculate_seasonal
     from .tickers import STOCKS_DB
 except ImportError:
-    from analysis import calculate_technicals, detect_candle_patterns, detect_chart_patterns, generate_recommendation
+    from analysis import calculate_technicals, detect_candle_patterns, detect_chart_patterns, generate_recommendation, calculate_forecast, calculate_seasonal
     from tickers import STOCKS_DB
 
 # Utility to clean NaNs for JSON compliance
@@ -80,6 +80,13 @@ def get_stock_data(ticker: str, period="2y", interval="1d"):
 def get_stock_details(ticker: str):
     stock, df = get_stock_data(ticker, period="1d")
     info = stock.info
+    # Try to find logo - use Clearbit API as reliable fallback if website exists
+    website = info.get("website")
+    logo_url = info.get("logo_url", "")
+    if not logo_url and website:
+        domain = website.replace("https://", "").replace("http://", "").split("/")[0]
+        logo_url = f"https://logo.clearbit.com/{domain}"
+        
     return clean_nans({
         "symbol": ticker,
         "name": info.get("longName", ticker),
@@ -87,6 +94,7 @@ def get_stock_details(ticker: str):
         "sector": info.get("sector", "N/A"),
         "industry": info.get("industry", "N/A"),
         "description": info.get("longBusinessSummary", "N/A"),
+        "logo_url": logo_url
     })
 
 @app.get("/api/stock/{ticker}/technicals")
@@ -167,6 +175,18 @@ def get_fundamentals(ticker: str):
         },
         "financials": financials_data
     })
+
+@app.get("/api/stock/{ticker}/forecast")
+def get_forecast_data(ticker: str):
+    stock, df = get_stock_data(ticker, period="2y") # Need enough history for trend
+    forecast = calculate_forecast(df)
+    return clean_nans(forecast)
+
+@app.get("/api/stock/{ticker}/seasonal")
+def get_seasonal_data(ticker: str):
+    stock, df = get_stock_data(ticker, period="5y") # Need years of history
+    seasonal = calculate_seasonal(df)
+    return clean_nans(seasonal)
 
 @app.get("/api/stock/{ticker}/chart")
 def get_chart_data(ticker: str, range: str = "1y"):
