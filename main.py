@@ -94,7 +94,7 @@ def get_stock_details(ticker: str):
     website = info.get("website")
     logo_url = info.get("logo_url", "")
     if not logo_url and website:
-        domain = website.replace("https://", "").replace("http://", "").split("/")[0]
+        domain = website.replace("https://", "").replace("http://", "").replace("www.", "").split("/")[0]
         logo_url = f"https://logo.clearbit.com/{domain}"
         
     return clean_nans({
@@ -155,8 +155,8 @@ def get_fundamentals(ticker: str):
         income_stmt = stock.quarterly_income_stmt
         
         if not income_stmt.empty:
-            # Fetch last 8 quarters (2 years)
-            for date in income_stmt.columns[:8]:
+            # Fetch last 12 quarters (3 years)
+            for date in income_stmt.columns[:12]:
                 col = income_stmt[date]
                 try:
                     # Robust key search

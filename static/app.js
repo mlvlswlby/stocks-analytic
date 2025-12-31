@@ -177,11 +177,12 @@ const App = {
 
                 await nextTick();
                 if (activeTab.value === 'chart') {
-                    renderMainChart(chartData);
+                    // Small delay to ensure v-show has applied layout
+                    setTimeout(() => renderMainChart(chartData), 50);
                 } else if (activeTab.value === 'forecasting') {
-                    renderForecastChart(chartData, forecast);
+                    setTimeout(() => renderForecastChart(chartData, forecast), 50);
                 } else if (activeTab.value === 'seasonal') {
-                    renderSeasonalChart(seasonal);
+                    setTimeout(() => renderSeasonalChart(seasonal), 50);
                 }
 
             } catch (e) {
