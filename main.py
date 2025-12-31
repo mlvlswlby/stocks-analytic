@@ -88,7 +88,8 @@ def get_stock_details(ticker: str):
 
 @app.get("/api/stock/{ticker}/technicals")
 def get_technicals(ticker: str):
-    stock, df = get_stock_data(ticker, period="3y") # Need enough data for SMA200
+    # Optimize: 1y is enough for SMA 200 (approx 252 trading days)
+    stock, df = get_stock_data(ticker, period="1y")
     
     # Calculate indicators
     df = calculate_technicals(df)

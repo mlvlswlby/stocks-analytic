@@ -11,12 +11,13 @@ const App = {
         const fundamentals = ref(null);
         const loading = ref(false);
         const error = ref(null);
-        const activeTab = ref('chart'); // chart, technicals, fundamentals, about
+        const activeTab = ref('chart');
 
         // Dashboard Lists
         const idxStocks = ref([]);
         const usStocks = ref([]);
         const loadingList = ref(false);
+        const listProgress = ref('');
 
         // Chart Info
         let chartInstance = null;
@@ -25,39 +26,78 @@ const App = {
 
         // API Helper
         const fetchAPI = async (endpoint) => {
-            const res = await fetch(`/api/${endpoint}`);
-            if (!res.ok) {
-                const txt = await res.text();
-                // If 404, just return null or throw depending on need
-                throw new Error(txt || res.statusText);
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
+
+            try {
+                const res = await fetch(`/api/${endpoint}`, { signal: controller.signal });
+                clearTimeout(timeoutId);
+                if (!res.ok) {
+                    throw new Error(res.statusText);
+                }
+                return await res.json();
+            } catch (e) {
+                clearTimeout(timeoutId);
+                throw e;
             }
-            return res.json();
         };
 
         const loadQuickAnalysis = async (ticker) => {
             try {
-                // Just get technicals for the list item score
                 const tech = await fetchAPI(`stock/${ticker}/technicals`);
                 return { symbol: ticker, ...tech };
             } catch (e) {
-                console.error(`Failed to load ${ticker}`, e);
-                return { symbol: ticker, score: 0, recommendation: 'N/A', indicators: {} };
+                console.warn(`Failed to load ${ticker}`, e);
+                // Return placeholder so it doesn't break the UI, but maybe filter out later
+                return null;
             }
+        };
+
+        const processBatch = async (tickers, targetRef) => {
+            const batchSize = 3;
+            const results = [];
+
+            for (let i = 0; i < tickers.length; i += batchSize) {
+                const batch = tickers.slice(i, i + batchSize);
+                listProgress.value = `Analyzing ${Math.min(i + batchSize, tickers.length)} / ${tickers.length}...`;
+
+                const batchResults = await Promise.all(batch.map(t => loadQuickAnalysis(t)));
+                results.push(...batchResults.filter(r => r !== null));
+
+                // Small delay to yield to UI and not choke server (simple rate limit)
+                await new Promise(r => setTimeout(r, 500));
+            }
+
+            // Sort by Score Descending (High Score = Buy)
+            targetRef.value = results.sort((a, b) => b.score - a.score);
         };
 
         const initDashboard = async () => {
             loadingList.value = true;
-            const idxTickers = ['BBCA.JK', 'BBRI.JK', 'BMRI.JK', 'TLKM.JK', 'ASII.JK', 'GOTO.JK'];
-            const usTickers = ['AAPL', 'MSFT', 'NVDA', 'TSLA', 'AMZN', 'GOOGL'];
+
+            // Candidate Lists (Blue Chips / High Vol)
+            const idxCandidates = [
+                'BBCA.JK', 'BBRI.JK', 'BMRI.JK', 'BBNI.JK',
+                'TLKM.JK', 'ASII.JK', 'UNVR.JK', 'GOTO.JK',
+                'ADRO.JK', 'ICBP.JK'
+            ];
+            const usCandidates = [
+                'NVDA', 'TSLA', 'AAPL', 'MSFT', 'AMZN',
+                'GOOGL', 'META', 'AMD', 'NFLX', 'INTC'
+            ];
 
             try {
-                // We fetch them in parallel groups
-                idxStocks.value = await Promise.all(idxTickers.map(t => loadQuickAnalysis(t)));
-                usStocks.value = await Promise.all(usTickers.map(t => loadQuickAnalysis(t)));
+                // Process IDX
+                await processBatch(idxCandidates, idxStocks);
+
+                // Process US
+                await processBatch(usCandidates, usStocks);
+
             } catch (e) {
-                console.error("Dashboard load partial error", e);
+                console.error("Dashboard error", e);
             } finally {
                 loadingList.value = false;
+                listProgress.value = '';
             }
         };
 
@@ -71,7 +111,7 @@ const App = {
             currentStock.value = null;
             stockDetails.value = null;
             searchQuery.value = '';
-            // destroy chart
+            activeTab.value = 'chart';
             if (chartInstance) {
                 chartInstance.remove();
                 chartInstance = null;
@@ -82,13 +122,14 @@ const App = {
             loading.value = true;
             error.value = null;
             currentStock.value = ticker;
-            // Clear previous data
+
+            // Reset Data
             stockDetails.value = null;
             technicals.value = null;
             fundamentals.value = null;
 
             try {
-                // Parallel fetch
+                // Parallel fetch for details
                 const [details, tech, fund, chartData] = await Promise.all([
                     fetchAPI(`stock/${ticker}`),
                     fetchAPI(`stock/${ticker}/technicals`),
@@ -100,27 +141,22 @@ const App = {
                 technicals.value = tech;
                 fundamentals.value = fund;
 
-                // Wait for DOM update so container exists
+                // Save graph data for tab switching
+                stockDetails.value.chartData = chartData;
+
                 await nextTick();
-                // Double check container visibility
                 if (activeTab.value === 'chart') {
                     renderChart(chartData);
-                } else {
-                    // store data for later rendering if tab switches
-                    stockDetails.value.chartData = chartData;
                 }
-
-                stockDetails.value.chartData = chartData; // Save it
 
             } catch (e) {
                 console.error(e);
-                error.value = `Failed to load ${ticker}. ${e.message}`;
+                error.value = `Failed to load ${ticker}. Server might be busy or ticker invalid.`;
             } finally {
                 loading.value = false;
             }
         };
 
-        // Watch tab change to re-render chart if needed
         watch(activeTab, async (newTab) => {
             if (newTab === 'chart' && stockDetails.value?.chartData) {
                 await nextTick();
@@ -129,12 +165,8 @@ const App = {
         });
 
         const renderChart = (data) => {
-            if (!chartContainer.value) {
-                console.warn("Chart container missing");
-                return;
-            }
+            if (!chartContainer.value) return;
 
-            // Dispose old chart
             if (chartInstance) {
                 chartInstance.remove();
                 chartInstance = null;
@@ -169,12 +201,11 @@ const App = {
             candleSeries.setData(data);
             chartInstance.timeScale().fitContent();
 
-            // Handle resize
-            window.addEventListener('resize', () => {
-                if (chartContainer.value) {
-                    chartInstance.resize(chartContainer.value.clientWidth, 400);
-                }
-            });
+            new ResizeObserver(entries => {
+                if (entries.length === 0 || !entries[0].contentRect) return;
+                const newRect = entries[0].contentRect;
+                chartInstance.applyOptions({ width: newRect.width, height: newRect.height });
+            }).observe(chartContainer.value);
         };
 
         const formatNumber = (num) => {
@@ -183,8 +214,10 @@ const App = {
         };
 
         const getScoreColor = (score) => {
-            if (score >= 70) return 'text-green-400';
-            if (score <= 30) return 'text-red-400';
+            if (score >= 80) return 'text-emerald-400 font-black';
+            if (score >= 60) return 'text-green-400';
+            if (score <= 20) return 'text-rose-500 font-black';
+            if (score <= 40) return 'text-red-400';
             return 'text-slate-400';
         };
 
@@ -217,6 +250,7 @@ const App = {
             idxStocks,
             usStocks,
             loadingList,
+            listProgress,
             loadStock,
             goBack,
             getScoreColor
