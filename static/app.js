@@ -96,7 +96,22 @@ const App = {
                 results.push(...batchResults.filter(r => r !== null));
                 await new Promise(r => setTimeout(r, 500));
             }
-            targetRef.value = results.sort((a, b) => b.score - a.score);
+            targetRef.value = results.sort((a, b) => {
+                // Custom Priority: Buy > Neutral > Sell
+                const getPriority = (rec) => {
+                    if (rec.includes('STRONG BUY')) return 5;
+                    if (rec.includes('BUY')) return 4;
+                    if (rec.includes('NEUTRAL')) return 3;
+                    if (rec.includes('SELL')) return 2; // Sell
+                    return 1; // Strong Sell
+                };
+
+                const prioA = getPriority(a.recommendation);
+                const prioB = getPriority(b.recommendation);
+
+                if (prioA !== prioB) return prioB - prioA; // Descending Priority
+                return b.score - a.score; // Tie-break with Score
+            });
         };
 
         const initDashboard = async () => {
@@ -377,7 +392,7 @@ const App = {
             if (score >= 60) return 'text-green-400';
             if (score <= 20) return 'text-rose-500 font-black';
             if (score <= 40) return 'text-red-400';
-            return 'text-slate-400';
+            return 'text-gray-500 font-medium'; // Neutral - Distinct Gray
         };
 
         const recommendationClass = computed(() => {

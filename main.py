@@ -91,11 +91,30 @@ def get_stock_details(ticker: str):
     stock, df = get_stock_data(ticker, period="1d")
     info = stock.info
     # Try to find logo - use Clearbit API as reliable fallback if website exists
+    # Try to find logo - use Clearbit API as reliable fallback
     website = info.get("website")
     logo_url = info.get("logo_url", "")
+    
     if not logo_url and website:
-        domain = website.replace("https://", "").replace("http://", "").replace("www.", "").split("/")[0]
-        logo_url = f"https://logo.clearbit.com/{domain}"
+        try:
+            # Clean url
+            clean_url = website.lower().replace("https://", "").replace("http://", "").split("/")[0]
+            
+            # Remove common subdomains that might break logo lookup (ir., investors., www.)
+            # This is a heuristic. Ideally usage of tldextract is better but avoiding extra deps.
+            parts = clean_url.split('.')
+            if len(parts) > 2:
+                # likely subdomain.domain.com. Keep last two.
+                # Exception: co.uk, com.sg etc. But for US stocks (most common) last 2 is safe.
+                # Let's try to strip specifically known subdomains first
+                for sub in ["www.", "ir.", "investors.", "investor.", "corporate."]:
+                    if clean_url.startswith(sub):
+                        clean_url = clean_url.replace(sub, "")
+                        break
+            
+            logo_url = f"https://logo.clearbit.com/{clean_url}"
+        except Exception:
+            logo_url = ""
         
     return clean_nans({
         "symbol": ticker,
