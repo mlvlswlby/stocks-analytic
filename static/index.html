@@ -1,0 +1,193 @@
+
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StockAnalyst API</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Vue 3 -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <!-- Lightweight Charts -->
+    <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen">
+    <div id="app" class="container mx-auto p-4 max-w-6xl">
+        
+        <!-- Header & Search -->
+        <header class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
+            <div class="flex items-center gap-3">
+                <i class="fa-solid fa-chart-line text-3xl text-blue-500"></i>
+                <h1 class="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-teal-400">
+                    StockAnalyst
+                </h1>
+            </div>
+            
+            <form @submit.prevent="handleSearch" class="relative w-full md:w-96">
+                <input 
+                    type="text" 
+                    v-model="searchQuery"
+                    placeholder="Search Symbol (e.g. AAPL, BBCA.JK)..." 
+                    class="w-full bg-slate-800 border-slate-700 border rounded-xl py-3 px-4 pl-12 focus:outline-none focus:border-blue-500 input-glow transition-all"
+                >
+                <i class="fa-solid fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"></i>
+            </form>
+        </header>
+
+        <!-- Loading / Error -->
+        <transition name="fade">
+            <div v-if="loading" class="text-center py-20">
+                <i class="fa-solid fa-circle-notch fa-spin text-4xl text-blue-500 mb-4"></i>
+                <p class="text-slate-400">Analyzing Market Data...</p>
+            </div>
+            <div v-else-if="error" class="text-center py-20 text-red-400 bg-red-900/10 rounded-xl">
+                <i class="fa-solid fa-triangle-exclamation text-3xl mb-2"></i>
+                <p>{{ error }}</p>
+            </div>
+        </transition>
+
+        <!-- Main Content -->
+        <div v-if="stockDetails && !loading" class="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-slide-up">
+            
+            <!-- Left Column: Summary & Techs -->
+            <div class="lg:col-span-1 space-y-6">
+                <!-- Profile Card -->
+                <div class="glass-card rounded-2xl p-6">
+                    <div class="flex justify-between items-start mb-2">
+                        <div>
+                            <h2 class="text-3xl font-bold">{{ stockDetails.symbol }}</h2>
+                            <p class="text-slate-400 text-sm">{{ stockDetails.name }}</p>
+                        </div>
+                        <div class="text-right">
+                            <h2 class="text-2xl font-bold">${{ stockDetails.price }}</h2>
+                            <span class="text-sm px-2 py-0.5 rounded bg-blue-500/10 text-blue-400">{{ stockDetails.sector }}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-6 pt-6 border-t border-slate-700">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-slate-400">Analysis Rating</span>
+                            <span class="font-black text-xl" :class="recommendationClass">{{ technicals?.recommendation }}</span>
+                        </div>
+                        <div class="w-full bg-slate-700 h-2 rounded-full overflow-hidden">
+                            <div 
+                                class="h-full bg-gradient-to-r from-red-500 via-yellow-500 to-green-500 transition-all duration-1000"
+                                :style="{ width: technicals?.score + '%' }"
+                            ></div>
+                        </div>
+                        <div class="flex justify-between text-xs text-slate-500 mt-1">
+                            <span>Sell</span>
+                            <span>Neutral</span>
+                            <span>Buy</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Technical Indicators -->
+                <div class="glass-card rounded-2xl p-6">
+                    <h3 class="text-lg font-semibold mb-4 text-blue-300">Technical Indicators</h3>
+                    
+                    <div class="space-y-3 text-sm">
+                        <div class="flex justify-between">
+                            <span class="text-slate-400">RSI (14)</span>
+                            <span :class="technicals.indicators.RSI > 70 ? 'text-red-400' : technicals.indicators.RSI < 30 ? 'text-green-400' : 'text-slate-200'">
+                                {{ technicals.indicators.RSI?.toFixed(2) }}
+                            </span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-slate-400">SMA 50 / 200</span>
+                            <span :class="technicals.indicators.SMA_50 > technicals.indicators.SMA_200 ? 'text-green-400' : 'text-red-400'">
+                                {{ technicals.indicators.SMA_50 > technicals.indicators.SMA_200 ? 'Bullish' : 'Bearish' }}
+                            </span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-slate-400">Stoch K/D</span>
+                            <span>{{ technicals.indicators.Stochastic_K?.toFixed(1) }} / {{ technicals.indicators.Stochastic_D?.toFixed(1) }}</span>
+                        </div>
+                    </div>
+
+                    <h4 class="text-sm font-semibold mt-4 mb-2 text-purple-300">Detected Patterns</h4>
+                    <div class="flex flex-wrap gap-2">
+                        <span v-for="(val, name) in technicals.patterns.candle" :key="name" 
+                            v-show="val" class="px-2 py-1 bg-purple-500/20 text-purple-300 rounded text-xs">
+                            {{ name }}
+                        </span>
+                        <span v-if="technicals.patterns.chart.length > 0" class="px-2 py-1 bg-amber-500/20 text-amber-300 rounded text-xs">
+                           {{ technicals.patterns.chart.join(', ') }}
+                        </span>
+                        <span v-if="Object.values(technicals.patterns.candle).every(v=>!v)" class="text-slate-500 text-xs italic">No clear patterns</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: Chart & Tabs -->
+            <div class="lg:col-span-2 space-y-6">
+                <!-- Chart -->
+                <div class="glass-card rounded-2xl p-4">
+                     <div ref="chartContainer" class="chart-container rounded-xl overflow-hidden"></div>
+                </div>
+
+                <!-- Details Tabs -->
+                <div class="glass-card rounded-2xl p-6">
+                    <div class="flex gap-6 border-b border-slate-700 pb-4 mb-4">
+                        <button @click="activeTab = 'fundamentals'" :class="{'text-blue-400 border-b-2 border-blue-400': activeTab === 'fundamentals'}" class="pb-1 transition-colors">Fundamentals</button>
+                        <button @click="activeTab = 'desc'" :class="{'text-blue-400 border-b-2 border-blue-400': activeTab === 'desc'}" class="pb-1 transition-colors">About</button>
+                    </div>
+
+                    <div v-if="activeTab === 'fundamentals'">
+                        <div class="grid grid-cols-3 gap-4 mb-6">
+                            <div class="bg-slate-800/50 p-3 rounded-lg text-center">
+                                <p class="text-xs text-slate-400">PER</p>
+                                <p class="font-bold text-lg">{{ fundamentals.ratios.PER?.toFixed(2) || '-' }}</p>
+                            </div>
+                            <div class="bg-slate-800/50 p-3 rounded-lg text-center">
+                                <p class="text-xs text-slate-400">PBV</p>
+                                <p class="font-bold text-lg">{{ fundamentals.ratios.PBV?.toFixed(2) || '-' }}</p>
+                            </div>
+                            <div class="bg-slate-800/50 p-3 rounded-lg text-center">
+                                <p class="text-xs text-slate-400">Market Cap</p>
+                                <p class="font-bold text-lg">{{ formatNumber(fundamentals.ratios.MarketCap) }}</p>
+                            </div>
+                        </div>
+
+                        <table class="w-full text-sm text-left">
+                            <thead class="text-xs text-slate-400 uppercase bg-slate-800">
+                                <tr>
+                                    <th class="px-4 py-3 rounded-l-lg">Date</th>
+                                    <th class="px-4 py-3">Revenue</th>
+                                    <th class="px-4 py-3">Net Income</th>
+                                    <th class="px-4 py-3 rounded-r-lg">Op. Expense</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="q in fundamentals.financials" :key="q.date" class="border-b border-slate-700/50 hover:bg-slate-800/30 transition-colors">
+                                    <td class="px-4 py-3 font-medium">{{ q.date }}</td>
+                                    <td class="px-4 py-3 text-emerald-400">{{ formatNumber(q.revenue) }}</td>
+                                    <td class="px-4 py-3 text-blue-400">{{ formatNumber(q.net_income) }}</td>
+                                    <td class="px-4 py-3 text-slate-400">{{ formatNumber(q.operating_expense) }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div v-if="activeTab === 'desc'">
+                        <p class="text-slate-300 leading-relaxed text-sm">
+                            {{ stockDetails.description }}
+                        </p>
+                    </div>
+
+                </div>
+            </div>
+
+        </div>
+    </div>
+    
+    <!-- App Logic -->
+    <script src="/static/app.js"></script>
+</body>
+</html>
