@@ -3,11 +3,23 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 import yfinance as yf
 import pandas as pd
+from fastapi import FastAPI, HTTPException, Query
+from fastapi.middleware.cors import CORSMiddleware
+import yfinance as yf
+import pandas as pd
+import numpy as np
 import json
-try:
-    from .analysis import calculate_technicals, detect_candle_patterns, detect_chart_patterns, generate_recommendation
-except ImportError:
-    from analysis import calculate_technicals, detect_candle_patterns, detect_chart_patterns, generate_recommendation
+import math
+
+# Utility to clean NaNs for JSON compliance
+def clean_nans(obj):
+    if isinstance(obj, float):
+        return None if math.isnan(obj) or math.isinf(obj) else obj
+    elif isinstance(obj, dict):
+        return {k: clean_nans(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [clean_nans(v) for v in obj]
+    return obj
 
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse

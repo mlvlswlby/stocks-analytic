@@ -179,10 +179,14 @@ const App = {
         const renderChart = (data) => {
             if (!chartContainer.value) return;
 
+            // Dispose old chart
             if (chartInstance) {
                 chartInstance.remove();
                 chartInstance = null;
             }
+
+            // Fallback dimensions if container has no size yet (e.g. hidden tab)
+            const clientWidth = chartContainer.value.clientWidth || 600;
 
             const chartOptions = {
                 layout: {
@@ -197,7 +201,7 @@ const App = {
                     timeVisible: true,
                     secondsVisible: false,
                 },
-                width: chartContainer.value.clientWidth, // Explicit Text
+                width: clientWidth,
                 height: 400,
             };
 
@@ -214,13 +218,27 @@ const App = {
             candleSeries.setData(data);
             chartInstance.timeScale().fitContent();
 
-            new ResizeObserver(entries => {
+            // Resize Observer to handle window resize or tab switch
+            const resizeObserver = new ResizeObserver(entries => {
                 if (entries.length === 0 || !entries[0].contentRect) return;
                 const newRect = entries[0].contentRect;
-                if (chartInstance) {
+                if (chartInstance && newRect.width > 0) {
                     chartInstance.applyOptions({ width: newRect.width, height: 400 });
+                    chartInstance.timeScale().fitContent();
                 }
-            }).observe(chartContainer.value);
+            });
+
+            resizeObserver.observe(chartContainer.value);
+
+            // Force a resize check in case it rendered with 0 width
+            setTimeout(() => {
+                if (chartContainer.value && chartInstance) {
+                    const w = chartContainer.value.clientWidth;
+                    if (w > 0) {
+                        chartInstance.applyOptions({ width: w });
+                    }
+                }
+            }, 100);
         };
 
         const formatNumber = (num) => {
