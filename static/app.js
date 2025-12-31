@@ -5,14 +5,18 @@ const App = {
     setup() {
         // State
         const searchQuery = ref('');
-        const searchResults = ref([]);
         const currentStock = ref(null);
         const stockDetails = ref(null);
         const technicals = ref(null);
         const fundamentals = ref(null);
         const loading = ref(false);
         const error = ref(null);
-        const activeTab = ref('chart'); // chart, technicals, fundamentals
+        const activeTab = ref('chart'); // chart, technicals, fundamentals, about
+
+        // Dashboard Lists
+        const idxStocks = ref([]);
+        const usStocks = ref([]);
+        const loadingList = ref(false);
 
         // Chart Info
         let chartInstance = null;
@@ -22,24 +26,66 @@ const App = {
         // API Helper
         const fetchAPI = async (endpoint) => {
             const res = await fetch(`/api/${endpoint}`);
-            if (!res.ok) throw new Error(await res.text());
+            if (!res.ok) {
+                const txt = await res.text();
+                // If 404, just return null or throw depending on need
+                throw new Error(txt || res.statusText);
+            }
             return res.json();
         };
 
+        const loadQuickAnalysis = async (ticker) => {
+            try {
+                // Just get technicals for the list item score
+                const tech = await fetchAPI(`stock/${ticker}/technicals`);
+                return { symbol: ticker, ...tech };
+            } catch (e) {
+                console.error(`Failed to load ${ticker}`, e);
+                return { symbol: ticker, score: 0, recommendation: 'N/A', indicators: {} };
+            }
+        };
+
+        const initDashboard = async () => {
+            loadingList.value = true;
+            const idxTickers = ['BBCA.JK', 'BBRI.JK', 'BMRI.JK', 'TLKM.JK', 'ASII.JK', 'GOTO.JK'];
+            const usTickers = ['AAPL', 'MSFT', 'NVDA', 'TSLA', 'AMZN', 'GOOGL'];
+
+            try {
+                // We fetch them in parallel groups
+                idxStocks.value = await Promise.all(idxTickers.map(t => loadQuickAnalysis(t)));
+                usStocks.value = await Promise.all(usTickers.map(t => loadQuickAnalysis(t)));
+            } catch (e) {
+                console.error("Dashboard load partial error", e);
+            } finally {
+                loadingList.value = false;
+            }
+        };
+
         // Actions
-        const handleSearch = async () => {
+        const handleSearch = () => {
             if (searchQuery.value.length < 1) return;
-            // For now, just a direct search, assuming user types ticker
-            // In a real app we would have an autocomplete
-            const ticker = searchQuery.value.toUpperCase();
-            loadStock(ticker);
+            loadStock(searchQuery.value.toUpperCase());
+        };
+
+        const goBack = () => {
+            currentStock.value = null;
+            stockDetails.value = null;
+            searchQuery.value = '';
+            // destroy chart
+            if (chartInstance) {
+                chartInstance.remove();
+                chartInstance = null;
+            }
         };
 
         const loadStock = async (ticker) => {
             loading.value = true;
             error.value = null;
             currentStock.value = ticker;
-            searchResults.value = [];
+            // Clear previous data
+            stockDetails.value = null;
+            technicals.value = null;
+            fundamentals.value = null;
 
             try {
                 // Parallel fetch
@@ -54,18 +100,39 @@ const App = {
                 technicals.value = tech;
                 fundamentals.value = fund;
 
+                // Wait for DOM update so container exists
                 await nextTick();
-                renderChart(chartData);
+                // Double check container visibility
+                if (activeTab.value === 'chart') {
+                    renderChart(chartData);
+                } else {
+                    // store data for later rendering if tab switches
+                    stockDetails.value.chartData = chartData;
+                }
+
+                stockDetails.value.chartData = chartData; // Save it
+
             } catch (e) {
                 console.error(e);
-                error.value = "Failed to load stock data. Check ticker symbol.";
+                error.value = `Failed to load ${ticker}. ${e.message}`;
             } finally {
                 loading.value = false;
             }
         };
 
+        // Watch tab change to re-render chart if needed
+        watch(activeTab, async (newTab) => {
+            if (newTab === 'chart' && stockDetails.value?.chartData) {
+                await nextTick();
+                renderChart(stockDetails.value.chartData);
+            }
+        });
+
         const renderChart = (data) => {
-            if (!chartContainer.value) return;
+            if (!chartContainer.value) {
+                console.warn("Chart container missing");
+                return;
+            }
 
             // Dispose old chart
             if (chartInstance) {
@@ -85,7 +152,8 @@ const App = {
                 timeScale: {
                     timeVisible: true,
                     secondsVisible: false,
-                }
+                },
+                height: 400,
             };
 
             chartInstance = LightweightCharts.createChart(chartContainer.value, chartOptions);
@@ -114,7 +182,12 @@ const App = {
             return new Intl.NumberFormat('en-US', { notation: "compact", maximumFractionDigits: 2 }).format(num);
         };
 
-        // Computed styles
+        const getScoreColor = (score) => {
+            if (score >= 70) return 'text-green-400';
+            if (score <= 30) return 'text-red-400';
+            return 'text-slate-400';
+        };
+
         const recommendationClass = computed(() => {
             if (!technicals.value) return '';
             const rec = technicals.value.recommendation;
@@ -123,10 +196,9 @@ const App = {
             return 'text-gray-400';
         });
 
-        // Initial Load (Demo)
+        // Initial Load
         onMounted(() => {
-            // Demo ticker
-            loadStock('AAPL');
+            initDashboard();
         });
 
         return {
@@ -141,7 +213,13 @@ const App = {
             chartContainer,
             activeTab,
             recommendationClass,
-            formatNumber
+            formatNumber,
+            idxStocks,
+            usStocks,
+            loadingList,
+            loadStock,
+            goBack,
+            getScoreColor
         };
     }
 };

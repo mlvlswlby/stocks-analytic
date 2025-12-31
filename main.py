@@ -111,8 +111,8 @@ def get_technicals(ticker: str):
             "SMA_100": last.get("SMA_100"),
             "SMA_200": last.get("SMA_200"),
             "RSI": last.get("RSI"),
-            "Stochastic_K": last.get("STOCHk_14_3_3"),
-            "Stochastic_D": last.get("STOCHd_14_3_3"),
+            "Stochastic_K": last.get("K"),
+            "Stochastic_D": last.get("D"),
         },
         "patterns": {
             "candle": candle_patterns,
@@ -126,28 +126,35 @@ def get_fundamentals(ticker: str):
     info = stock.info
     
     # Financials (Quarterly)
-    # yfinance often returns DataFrame for financials
-    income_stmt = stock.quarterly_income_stmt
-    balance_sheet = stock.quarterly_balance_sheet
-    
-    # Extract last 4 quarters if available
     financials_data = []
-    if not income_stmt.empty:
-        # formatting...
-        for date in income_stmt.columns[:4]: # last 4 quarters
-            col = income_stmt[date]
-            fin_obj = {
-                "date": str(date.date()),
-                "revenue": col.get("Total Revenue", col.get("TotalRevenue", 0)),
-                "net_income": col.get("Net Income", col.get("NetIncome", 0)),
-                "operating_expense": col.get("Operating Expense", col.get("OperatingExpense", 0)), # keys vary by yf version
-            }
-            financials_data.append(fin_obj)
+    try:
+        income_stmt = stock.quarterly_income_stmt
+        
+        if not income_stmt.empty:
+            for date in income_stmt.columns[:4]: # last 4 quarters
+                col = income_stmt[date]
+                try:
+                    # Robust key search for "Total Revenue"
+                    revenue = col.get("Total Revenue") or col.get("TotalRevenue") or 0
+                    net_inc = col.get("Net Income") or col.get("NetIncome") or 0
+                    op_exp = col.get("Operating Expense") or col.get("OperatingExpense") or col.get("Operating Expenses") or 0
+                    
+                    fin_obj = {
+                        "date": str(date.date()) if hasattr(date, 'date') else str(date),
+                        "revenue": revenue,
+                        "net_income": net_inc,
+                        "operating_expense": op_exp,
+                    }
+                    financials_data.append(fin_obj)
+                except Exception:
+                    continue
+    except Exception as e:
+        print(f"Error fetching fundamentals: {e}")
             
     return {
         "symbol": ticker,
         "ratios": {
-            "PER": info.get("trailingPE"),
+            "PER": info.get("trailingPE") or info.get("forwardPE"),
             "PBV": info.get("priceToBook"),
             "MarketCap": info.get("marketCap"),
         },

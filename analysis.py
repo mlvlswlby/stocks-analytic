@@ -22,9 +22,11 @@ def calculate_technicals(df: pd.DataFrame):
 
     # Stochastic
     stoch = ta.stoch(df['High'], df['Low'], df['Close'])
-    # pandas_ta returns STOCHk_14_3_3 and STOCHd_14_3_3 by default usually
-    # adjusting column names if needed, but usually it appends them
-    # We will rename for consistency or just use the generated names
+    if stoch is not None and not stoch.empty:
+        # Rename columns to standardized names for easier access
+        # stoch columns are usually k, d, (and maybe j)
+        stoch.columns = ['K', 'D']
+        df = pd.concat([df, stoch], axis=1)
     
     return df
 
