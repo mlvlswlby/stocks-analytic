@@ -398,9 +398,11 @@ const App = {
         const recommendationClass = computed(() => {
             if (!technicals.value) return '';
             const rec = technicals.value.recommendation;
+            if (rec.includes('STRONG BUY')) return 'text-emerald-400 font-black';
             if (rec.includes('BUY')) return 'text-green-400';
+            if (rec.includes('STRONG SELL')) return 'text-rose-500 font-black';
             if (rec.includes('SELL')) return 'text-red-400';
-            return 'text-gray-400';
+            return 'text-gray-500 font-bold'; // Neutral
         });
 
         onMounted(() => {

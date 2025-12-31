@@ -116,6 +116,7 @@ def get_stock_details(ticker: str):
         except Exception:
             logo_url = ""
         
+        
     return clean_nans({
         "symbol": ticker,
         "name": info.get("longName", ticker),
@@ -123,7 +124,8 @@ def get_stock_details(ticker: str):
         "sector": info.get("sector", "N/A"),
         "industry": info.get("industry", "N/A"),
         "description": info.get("longBusinessSummary", "N/A"),
-        "logo_url": logo_url
+        "logo_url": logo_url,
+        "domain": website.replace("https://", "").replace("http://", "").split("/")[0] if website else ""
     })
 
 @app.get("/api/stock/{ticker}/technicals")
