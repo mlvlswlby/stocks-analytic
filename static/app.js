@@ -5,6 +5,10 @@ const App = {
     setup() {
         // State
         const searchQuery = ref('');
+        const searchResults = ref([]);
+        const showSuggestions = ref(false);
+        const searchDebounce = ref(null);
+
         const currentStock = ref(null);
         const stockDetails = ref(null);
         const technicals = ref(null);
@@ -27,7 +31,7 @@ const App = {
         // API Helper
         const fetchAPI = async (endpoint) => {
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
+            const timeoutId = setTimeout(() => controller.abort(), 20000); // 20s timeout
 
             try {
                 const res = await fetch(`/api/${endpoint}`, { signal: controller.signal });
@@ -42,13 +46,37 @@ const App = {
             }
         };
 
+        const onSearchInput = () => {
+            if (searchDebounce.value) clearTimeout(searchDebounce.value);
+            if (searchQuery.value.length < 1) {
+                searchResults.value = [];
+                showSuggestions.value = false;
+                return;
+            }
+
+            searchDebounce.value = setTimeout(async () => {
+                try {
+                    const data = await fetchAPI(`search?q=${searchQuery.value}`);
+                    searchResults.value = data.results;
+                    showSuggestions.value = true;
+                } catch (e) {
+                    console.error("Search failed", e);
+                }
+            }, 300);
+        };
+
+        const selectSuggestion = (symbol) => {
+            searchQuery.value = symbol;
+            showSuggestions.value = false;
+            loadStock(symbol);
+        };
+
         const loadQuickAnalysis = async (ticker) => {
             try {
                 const tech = await fetchAPI(`stock/${ticker}/technicals`);
                 return { symbol: ticker, ...tech };
             } catch (e) {
-                console.warn(`Failed to load ${ticker}`, e);
-                // Return placeholder so it doesn't break the UI, but maybe filter out later
+                // Return placeholder
                 return null;
             }
         };
@@ -56,26 +84,18 @@ const App = {
         const processBatch = async (tickers, targetRef) => {
             const batchSize = 3;
             const results = [];
-
             for (let i = 0; i < tickers.length; i += batchSize) {
                 const batch = tickers.slice(i, i + batchSize);
                 listProgress.value = `Analyzing ${Math.min(i + batchSize, tickers.length)} / ${tickers.length}...`;
-
                 const batchResults = await Promise.all(batch.map(t => loadQuickAnalysis(t)));
                 results.push(...batchResults.filter(r => r !== null));
-
-                // Small delay to yield to UI and not choke server (simple rate limit)
                 await new Promise(r => setTimeout(r, 500));
             }
-
-            // Sort by Score Descending (High Score = Buy)
             targetRef.value = results.sort((a, b) => b.score - a.score);
         };
 
         const initDashboard = async () => {
             loadingList.value = true;
-
-            // Candidate Lists (Blue Chips / High Vol)
             const idxCandidates = [
                 'BBCA.JK', 'BBRI.JK', 'BMRI.JK', 'BBNI.JK',
                 'TLKM.JK', 'ASII.JK', 'UNVR.JK', 'GOTO.JK',
@@ -87,12 +107,8 @@ const App = {
             ];
 
             try {
-                // Process IDX
                 await processBatch(idxCandidates, idxStocks);
-
-                // Process US
                 await processBatch(usCandidates, usStocks);
-
             } catch (e) {
                 console.error("Dashboard error", e);
             } finally {
@@ -104,13 +120,14 @@ const App = {
         // Actions
         const handleSearch = () => {
             if (searchQuery.value.length < 1) return;
-            loadStock(searchQuery.value.toUpperCase());
+            selectSuggestion(searchQuery.value.toUpperCase());
         };
 
         const goBack = () => {
             currentStock.value = null;
             stockDetails.value = null;
             searchQuery.value = '';
+            showSuggestions.value = false;
             activeTab.value = 'chart';
             if (chartInstance) {
                 chartInstance.remove();
@@ -122,26 +139,21 @@ const App = {
             loading.value = true;
             error.value = null;
             currentStock.value = ticker;
-
-            // Reset Data
             stockDetails.value = null;
             technicals.value = null;
             fundamentals.value = null;
 
             try {
-                // Parallel fetch for details
                 const [details, tech, fund, chartData] = await Promise.all([
                     fetchAPI(`stock/${ticker}`),
                     fetchAPI(`stock/${ticker}/technicals`),
                     fetchAPI(`stock/${ticker}/fundamentals`),
-                    fetchAPI(`stock/${ticker}/chart?range=1y`)
+                    fetchAPI(`stock/${ticker}/chart?range=1y`) // 1y daily
                 ]);
 
                 stockDetails.value = details;
                 technicals.value = tech;
                 fundamentals.value = fund;
-
-                // Save graph data for tab switching
                 stockDetails.value.chartData = chartData;
 
                 await nextTick();
@@ -151,7 +163,7 @@ const App = {
 
             } catch (e) {
                 console.error(e);
-                error.value = `Failed to load ${ticker}. Server might be busy or ticker invalid.`;
+                error.value = `Failed to load ${ticker}. ${e.message}`;
             } finally {
                 loading.value = false;
             }
@@ -185,6 +197,7 @@ const App = {
                     timeVisible: true,
                     secondsVisible: false,
                 },
+                width: chartContainer.value.clientWidth, // Explicit Text
                 height: 400,
             };
 
@@ -204,7 +217,9 @@ const App = {
             new ResizeObserver(entries => {
                 if (entries.length === 0 || !entries[0].contentRect) return;
                 const newRect = entries[0].contentRect;
-                chartInstance.applyOptions({ width: newRect.width, height: newRect.height });
+                if (chartInstance) {
+                    chartInstance.applyOptions({ width: newRect.width, height: 400 });
+                }
             }).observe(chartContainer.value);
         };
 
@@ -229,13 +244,16 @@ const App = {
             return 'text-gray-400';
         });
 
-        // Initial Load
         onMounted(() => {
             initDashboard();
         });
 
         return {
             searchQuery,
+            searchResults,
+            showSuggestions,
+            onSearchInput,
+            selectSuggestion,
             currentStock,
             stockDetails,
             technicals,

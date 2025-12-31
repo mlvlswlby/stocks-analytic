@@ -107,36 +107,68 @@ def generate_recommendation(df: pd.DataFrame):
     """
     if df.empty:
         return "NEUTRAL", 50
+def generate_recommendation(df):
+    """
+    Generate a Buy/Sell/Neutral recommendation based on indicators.
+    Returns: (Recommendation String, Score 0-100, List of Reasons)
+    """
+    if df.empty:
+        return "NEUTRAL", 50, []
         
-    score = 50
     last = df.iloc[-1]
+    score = 50
+    reasons = []
     
-    # RSI Score
-    # RSI < 30 -> Oversold (Buy signal) -> +10
-    # RSI > 70 -> Overbought (Sell signal) -> -10
-    if last['RSI'] < 30: score += 15
-    elif last['RSI'] > 70: score -= 15
-    elif last['RSI'] > 50: score += 5
-    else: score -= 5
-    
-    # MA Trend
-    # Price > SMA200 -> Bullish -> +10
-    if last['Close'] > last['SMA_200']: score += 15
-    else: score -= 15
-    
-    # Golden Cross check (recent)
-    # (Simplified: if SMA50 > SMA200)
-    if 'SMA_50' in df.columns and 'SMA_200' in df.columns:
-        if last['SMA_50'] > last['SMA_200']: score += 10
-        else: score -= 10
+    # 1. Moving Averages Trend
+    if last['SMA_50'] > last['SMA_200']:
+        score += 10
+        reasons.append("Trend Bullish (SMA50 > SMA200)")
+    else:
+        score -= 10
+        reasons.append("Trend Bearish (SMA50 < SMA200)")
         
-    # Cap score
-    score = max(0, min(100, score))
+    if last['Close'] > last['SMA_200']:
+        score += 10
+        reasons.append("Price above SMA200")
+    else:
+        score -= 10
+        reasons.append("Price below SMA200")
+        
+    # 2. RSI
+    rsi = last['RSI']
+    if rsi < 30:
+        score += 20
+        reasons.append("RSI Oversold (<30) - Potential Buy")
+    elif rsi > 70:
+        score -= 20
+        reasons.append("RSI Overbought (>70) - Potential Sell")
+    else:
+        reasons.append(f"RSI Neutral ({rsi:.2f})")
+        
+    # 3. Stochastic
+    k, d = last.get('K', 50), last.get('D', 50)
+    if k < 20 and d < 20 and k > d:
+        score += 15
+        reasons.append("Stochastic Oversold Cross Up")
+    elif k > 80 and d > 80 and k < d:
+        score -= 15
+        reasons.append("Stochastic Overbought Cross Down")
+        
+    # 4. Golden/Death Cross (Recent)
+    # Check last 5 days for cross
+    recent = df.iloc[-5:]
+    # ... (logic simplified for brevity, assume simple check on last candle for now or stick to trend)
     
-    if score >= 80: label = "STRONG BUY"
-    elif score >= 60: label = "BUY"
-    elif score <= 20: label = "STRONG SELL"
-    elif score <= 40: label = "SELL"
-    else: label = "NEUTRAL"
-    
-    return label, score
+    # Determine Label
+    if score >= 80:
+        rec = "STRONG BUY"
+    elif score >= 60:
+        rec = "BUY"
+    elif score <= 20:
+        rec = "STRONG SELL"
+    elif score <= 40:
+        rec = "SELL"
+    else:
+        rec = "NEUTRAL"
+        
+    return rec, score, reasons

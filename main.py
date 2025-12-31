@@ -41,28 +41,28 @@ app.mount("/static", StaticFiles(directory=static_dir), name="static")
 def read_root():
     return FileResponse(os.path.join(static_dir, 'index.html'))
 
+
+try:
+    from .tickers import STOCKS_DB
+except ImportError:
+    from tickers import STOCKS_DB
+
 @app.get("/api/search")
 def search_stocks(q: str = Query(..., min_length=1)):
     """
-    Search for stocks.
-    For IDX stocks, user might type 'BBCA', we might need to append '.JK' if not present,
-    but yfinance usually handles standard tickers.
+    Autocomplete search from local DB or passthrough.
     """
-    try:
-        # yfinance search is a bit limited programmatically without extra libraries,
-        # but we can try to fetch info or use a predefined list later.
-        # For now, we will return the query as a ticker candidate if it looks valid.
-        # Ideally, we would use a proper search API.
+    q_upper = q.upper()
+    results = [s for s in STOCKS_DB if q_upper in s["symbol"] or q_upper in s["name"].upper()]
+    
+    # If no local results, add the query itself as a fallback option
+    if not results:
+        results.append({"symbol": q_upper, "name": q_upper})
         
-        # Simple passthrough for valid-looking tickers
-        return {"results": [{"symbol": q.upper(), "name": q.upper()}]}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    return {"results": results[:5]}
 
 def get_stock_data(ticker: str, period="2y", interval="1d"):
     if not ticker.endswith(".JK") and not ticker.isalpha(): 
-        # Heuristic: if it's not .JK and strictly letters, it might be US.
-        # If user explicitly asks for indonesia, they should probably suffix .JK or we handle it in frontend.
         pass
         
     stock = yf.Ticker(ticker)
@@ -97,7 +97,7 @@ def get_technicals(ticker: str):
     # Get patterns & recommendation
     candle_patterns = detect_candle_patterns(df)
     chart_patterns = detect_chart_patterns(df)
-    recommendation, score = generate_recommendation(df)
+    recommendation, score, reasons = generate_recommendation(df)
     
     last = df.iloc[-1]
     
@@ -105,6 +105,7 @@ def get_technicals(ticker: str):
         "symbol": ticker,
         "recommendation": recommendation,
         "score": score,
+        "reasons": reasons,
         "indicators": {
             "SMA_10": last.get("SMA_10"),
             "SMA_20": last.get("SMA_20"),
@@ -132,7 +133,8 @@ def get_fundamentals(ticker: str):
         income_stmt = stock.quarterly_income_stmt
         
         if not income_stmt.empty:
-            for date in income_stmt.columns[:4]: # last 4 quarters
+            # Fetch last 8 quarters (2 years)
+            for date in income_stmt.columns[:8]:
                 col = income_stmt[date]
                 try:
                     # Robust key search for "Total Revenue"
