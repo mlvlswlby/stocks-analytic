@@ -169,6 +169,25 @@ const App = {
             }
         };
 
+        const changeTimeframe = async (range) => {
+            if (!currentStock.value) return;
+            try {
+                // Determine sensible chart width to prevent jump
+                const containerWidth = chartContainer.value?.clientWidth || 600;
+
+                // Show small loading state if needed, or just fetch
+                const data = await fetchAPI(`stock/${currentStock.value}/chart?range=${range}`);
+
+                if (stockDetails.value) {
+                    stockDetails.value.chartData = data;
+                }
+
+                renderChart(data);
+            } catch (e) {
+                console.error("Failed to change timeframe", e);
+            }
+        };
+
         watch(activeTab, async (newTab) => {
             if (newTab === 'chart' && stockDetails.value?.chartData) {
                 await nextTick();
