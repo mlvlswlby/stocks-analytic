@@ -171,9 +171,10 @@
 
                     <div class="flex justify-between items-start mb-4 relative z-10">
                         <div class="flex items-center gap-4">
-                            <img v-if="stockDetails.logo_url" :src="stockDetails.logo_url"
-                                class="w-16 h-16 rounded-lg bg-white p-1 object-contain shadow-lg" alt="Logo"
-                                @error="$event.target.style.display='none'">
+                            <img :src="stockDetails.logo_url || `https://ui-avatars.com/api/?name=${stockDetails.symbol}&background=0f172a&color=3b82f6&bold=true`"
+                                class="w-16 h-16 rounded-lg bg-white/5 p-1 object-contain shadow-lg border border-slate-700"
+                                alt="Logo"
+                                @error="$event.target.src=`https://ui-avatars.com/api/?name=${stockDetails.symbol}&background=0f172a&color=3b82f6&bold=true`">
                             <div>
                                 <h2 class="text-4xl font-black tracking-tight">{{ stockDetails.symbol }}</h2>
                                 <p class="text-slate-300 font-medium">{{ stockDetails.name }}</p>

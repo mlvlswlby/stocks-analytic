@@ -120,6 +120,48 @@ def get_technicals(ticker: str):
     chart_patterns = detect_chart_patterns(df)
     recommendation, score, reasons, trend_details = generate_recommendation(df)
     
+    # --- Fundamental Analysis / Catalyst Injection ---
+    # We fetch info again or reuse if possible. get_stock_details fetches it but we are in get_technicals.
+    # We already have 'stock' object.
+    try:
+        info = stock.info
+        
+        # P/E Ratio
+        pe = info.get("trailingPE") or info.get("forwardPE")
+        if pe:
+            if pe < 15:
+                score += 5
+                reasons.append(f"Fundamental: Undervalued (P/E {pe:.1f} < 15)")
+            elif pe > 50:
+                score -= 5
+                reasons.append(f"Fundamental: Overvalued (P/E {pe:.1f} > 50)")
+                
+        # Revenue Growth
+        rev_growth = info.get("revenueGrowth")
+        if rev_growth and rev_growth > 0.20:
+             score += 5
+             reasons.append(f"Catalyst: High Revenue Growth ({(rev_growth*100):.1f}%)")
+             
+        # Margins
+        profit_margin = info.get("profitMargins")
+        if profit_margin and profit_margin > 0.20:
+            reasons.append(f"Fundamental: High Profit Margin ({(profit_margin*100):.1f}%)")
+            
+        # Analyst Target
+        current_price = info.get("currentPrice") or info.get("regularMarketPrice")
+        target_price = info.get("targetMeanPrice")
+        if current_price and target_price:
+            upside = (target_price - current_price) / current_price
+            if upside > 0.20:
+                 score += 5
+                 reasons.append(f"Catalyst: Analyst Upside Potential ({(upside*100):.1f}%)")
+                 
+    except Exception as e:
+        print(f"Fundamenal check failed: {e}")
+    
+    # Cap score
+    score = max(0, min(100, score))
+
     last = df.iloc[-1]
     
     return clean_nans({
