@@ -12,6 +12,8 @@ except ImportError:
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 
+import os
+
 app = FastAPI()
 
 # Enable CORS for frontend (useful if running separately, but we serve static now)
@@ -23,11 +25,21 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.mount("/static", StaticFiles(directory="backend/static"), name="static")
+# Determine path to static files
+current_dir = os.path.dirname(os.path.abspath(__file__))
+static_dir = os.path.join(current_dir, "static")
+
+# Check if static dir exists there, if not try 'backend/static' (local run from root)
+if not os.path.exists(static_dir):
+    static_dir = os.path.join(current_dir, "../backend/static") # If running from root, main is in backend module
+    if not os.path.exists(static_dir):
+        static_dir = "backend/static" # Fallback
+
+app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
 @app.get("/")
 def read_root():
-    return FileResponse('backend/static/index.html')
+    return FileResponse(os.path.join(static_dir, 'index.html'))
 
 @app.get("/api/search")
 def search_stocks(q: str = Query(..., min_length=1)):
