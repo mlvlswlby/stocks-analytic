@@ -289,6 +289,7 @@ const App = {
             listProgress,
             loadStock,
             goBack,
+            changeTimeframe,
             getScoreColor
         };
     }

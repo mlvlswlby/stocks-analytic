@@ -100,7 +100,7 @@ def get_technicals(ticker: str):
     # Get patterns & recommendation
     candle_patterns = detect_candle_patterns(df)
     chart_patterns = detect_chart_patterns(df)
-    recommendation, score, reasons = generate_recommendation(df)
+    recommendation, score, reasons, trend_details = generate_recommendation(df)
     
     last = df.iloc[-1]
     
@@ -109,6 +109,7 @@ def get_technicals(ticker: str):
         "recommendation": recommendation,
         "score": score,
         "reasons": reasons,
+        "trend_details": trend_details,
         "indicators": {
             "SMA_10": last.get("SMA_10"),
             "SMA_20": last.get("SMA_20"),

@@ -170,5 +170,16 @@ def generate_recommendation(df):
         rec = "SELL"
     else:
         rec = "NEUTRAL"
-        
-    return rec, score, reasons
+    
+    # Granular Trend Analysis
+    trend_details = {}
+    current_price = last['Close']
+    for ma in [10, 20, 60, 100, 200]:
+        ma_col = f'SMA_{ma}'
+        if ma_col in df.columns:
+            ma_val = last[ma_col]
+            if pd.notna(ma_val):
+                status = "Above" if current_price > ma_val else "Below"
+                trend_details[f'MA_{ma}'] = {"value": ma_val, "status": status}
+    
+    return rec, score, reasons, trend_details
