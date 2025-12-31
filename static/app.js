@@ -24,9 +24,14 @@ const App = {
         const listProgress = ref('');
 
         // Chart Info
-        let chartInstance = null;
-        let candleSeries = null;
-        const chartContainer = ref(null);
+        // Chart Info
+        let mainChart = null;
+        let forecastChart = null;
+        let seasonalChart = null;
+        const chartContainer = ref(null); // Keep for safety if HTML not fully updated, but primarily use:
+        const mainChartCanvas = ref(null);
+        const forecastChartCanvas = ref(null);
+        const seasonalChartCanvas = ref(null);
 
         // API Helper
         const fetchAPI = async (endpoint) => {
@@ -143,12 +148,17 @@ const App = {
             technicals.value = null;
             fundamentals.value = null;
 
+            // Destroy old charts
+            if (mainChart) { mainChart.destroy(); mainChart = null; }
+            if (forecastChart) { forecastChart.destroy(); forecastChart = null; }
+            if (seasonalChart) { seasonalChart.destroy(); seasonalChart = null; }
+
             try {
                 const [details, tech, fund, chartData] = await Promise.all([
                     fetchAPI(`stock/${ticker}`),
                     fetchAPI(`stock/${ticker}/technicals`),
                     fetchAPI(`stock/${ticker}/fundamentals`),
-                    fetchAPI(`stock/${ticker}/chart?range=1y`) // 1y daily
+                    fetchAPI(`stock/${ticker}/chart?range=1y`)
                 ]);
 
                 stockDetails.value = details;
@@ -156,9 +166,22 @@ const App = {
                 fundamentals.value = fund;
                 stockDetails.value.chartData = chartData;
 
+                // Fetch extra data for tabs
+                // We do it non-blocking or just wait? Let's wait to be simple
+                const [forecast, seasonal] = await Promise.all([
+                    fetchAPI(`stock/${ticker}/forecast`),
+                    fetchAPI(`stock/${ticker}/seasonal`)
+                ]);
+                stockDetails.value.forecastData = forecast;
+                stockDetails.value.seasonalData = seasonal;
+
                 await nextTick();
                 if (activeTab.value === 'chart') {
-                    renderChart(chartData);
+                    renderMainChart(chartData);
+                } else if (activeTab.value === 'forecasting') {
+                    renderForecastChart(chartData, forecast);
+                } else if (activeTab.value === 'seasonal') {
+                    renderSeasonalChart(seasonal);
                 }
 
             } catch (e) {
@@ -172,92 +195,175 @@ const App = {
         const changeTimeframe = async (range) => {
             if (!currentStock.value) return;
             try {
-                // Determine sensible chart width to prevent jump
-                const containerWidth = chartContainer.value?.clientWidth || 600;
-
-                // Show small loading state if needed, or just fetch
                 const data = await fetchAPI(`stock/${currentStock.value}/chart?range=${range}`);
-
                 if (stockDetails.value) {
                     stockDetails.value.chartData = data;
                 }
-
-                renderChart(data);
+                renderMainChart(data);
             } catch (e) {
                 console.error("Failed to change timeframe", e);
             }
         };
 
         watch(activeTab, async (newTab) => {
-            if (newTab === 'chart' && stockDetails.value?.chartData) {
-                await nextTick();
-                renderChart(stockDetails.value.chartData);
-            }
+            await nextTick();
+            if (newTab === 'chart') renderMainChart(stockDetails.value?.chartData);
+            if (newTab === 'forecasting') renderForecastChart(stockDetails.value?.chartData, stockDetails.value?.forecastData);
+            if (newTab === 'seasonal') renderSeasonalChart(stockDetails.value?.seasonalData);
         });
 
-        const renderChart = (data) => {
-            if (!chartContainer.value) return;
+        // Chart.js Implementations
+        const renderMainChart = (data) => {
+            if (!mainChartCanvas.value || !data) return;
+            if (mainChart) mainChart.destroy();
 
-            // Dispose old chart
-            if (chartInstance) {
-                chartInstance.remove();
-                chartInstance = null;
-            }
+            const ctx = mainChartCanvas.value.getContext('2d');
+            const dates = data.map(d => d.time);
+            const prices = data.map(d => d.close);
 
-            // Fallback dimensions if container has no size yet (e.g. hidden tab)
-            const clientWidth = chartContainer.value.clientWidth || 600;
+            // Create Gradient
+            const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+            gradient.addColorStop(0, 'rgba(59, 130, 246, 0.5)'); // Blue
+            gradient.addColorStop(1, 'rgba(59, 130, 246, 0.0)');
 
-            const chartOptions = {
-                layout: {
-                    textColor: '#94a3b8',
-                    background: { type: 'solid', color: '#1e293b' }
+            mainChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: dates,
+                    datasets: [{
+                        label: 'Close Price',
+                        data: prices,
+                        borderColor: '#3b82f6',
+                        backgroundColor: gradient,
+                        borderWidth: 2,
+                        fill: true,
+                        pointRadius: 0,
+                        pointHoverRadius: 4,
+                        tension: 0.1
+                    }]
                 },
-                grid: {
-                    vertLines: { color: 'rgba(255, 255, 255, 0.05)' },
-                    horzLines: { color: 'rgba(255, 255, 255, 0.05)' },
-                },
-                timeScale: {
-                    timeVisible: true,
-                    secondsVisible: false,
-                },
-                width: clientWidth,
-                height: 400,
-            };
-
-            chartInstance = LightweightCharts.createChart(chartContainer.value, chartOptions);
-
-            candleSeries = chartInstance.addCandlestickSeries({
-                upColor: '#10b981',
-                downColor: '#ef4444',
-                borderVisible: false,
-                wickUpColor: '#10b981',
-                wickDownColor: '#ef4444'
-            });
-
-            candleSeries.setData(data);
-            chartInstance.timeScale().fitContent();
-
-            // Resize Observer to handle window resize or tab switch
-            const resizeObserver = new ResizeObserver(entries => {
-                if (entries.length === 0 || !entries[0].contentRect) return;
-                const newRect = entries[0].contentRect;
-                if (chartInstance && newRect.width > 0) {
-                    chartInstance.applyOptions({ width: newRect.width, height: 400 });
-                    chartInstance.timeScale().fitContent();
-                }
-            });
-
-            resizeObserver.observe(chartContainer.value);
-
-            // Force a resize check in case it rendered with 0 width
-            setTimeout(() => {
-                if (chartContainer.value && chartInstance) {
-                    const w = chartContainer.value.clientWidth;
-                    if (w > 0) {
-                        chartInstance.applyOptions({ width: w });
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { mode: 'index', intersect: false }
+                    },
+                    scales: {
+                        x: { display: true, grid: { color: 'rgba(255,255,255,0.05)' } },
+                        y: { display: true, grid: { color: 'rgba(255,255,255,0.05)' } }
                     }
                 }
-            }, 100);
+            });
+        };
+
+        const renderForecastChart = (history, forecast) => {
+            if (!forecastChartCanvas.value || !history || !forecast) return;
+            if (forecastChart) forecastChart.destroy();
+
+            // Check if history is valid
+            if (!history || history.length === 0) return;
+
+            const histData = history.map(d => d.close).slice(-60); // Last 60 points
+            const histLabels = history.map(d => d.time).slice(-60);
+
+            // Forecast data
+            const forecastValues = forecast.map(d => d.value);
+            const forecastLabels = forecast.map(d => d.time);
+
+            // Connect: The forecast line typically starts from the last history point
+            // We can pad the forecast dataset with nulls for the history period
+            // Or just concat the labels and have two datasets
+
+            const labels = [...histLabels, ...forecastLabels];
+            const dataset1 = [...histData, ...new Array(forecastValues.length).fill(null)];
+
+            // Dataset 2 needs to start at the last point of dataset 1 for continuity
+            // Let's create a null-padded array for dataset 2
+            const dataset2 = new Array(histData.length - 1).fill(null);
+            dataset2.push(histData[histData.length - 1]); // Connection point
+            dataset2.push(...forecastValues);
+
+            const ctx = forecastChartCanvas.value.getContext('2d');
+            forecastChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'History',
+                            data: dataset1,
+                            borderColor: '#94a3b8',
+                            borderWidth: 2,
+                            pointRadius: 0,
+                            fill: false
+                        },
+                        {
+                            label: 'Forecast (3 Months)',
+                            data: dataset2,
+                            borderColor: '#10b981',
+                            borderWidth: 2,
+                            borderDash: [5, 5],
+                            pointRadius: 0,
+                            fill: false
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: { legend: { display: true, labels: { color: '#cbd5e1' } } },
+                    scales: {
+                        x: { grid: { color: 'rgba(255,255,255,0.05)' } },
+                        y: { grid: { color: 'rgba(255,255,255,0.05)' } }
+                    }
+                }
+            });
+        };
+
+        const renderSeasonalChart = (seasonalData) => {
+            if (!seasonalChartCanvas.value || !seasonalData) return;
+            if (seasonalChart) seasonalChart.destroy();
+
+            const keys = Object.keys(seasonalData).sort().reverse();
+            if (keys.length === 0) return;
+
+            // Use longest dataset for labels
+            const longestKey = keys.reduce((a, b) => seasonalData[a].length > seasonalData[b].length ? a : b);
+            const labels = seasonalData[longestKey].map(d => d.label);
+
+            const colors = ['#3b82f6', '#10b981', '#f59e0b']; // Blue, Green, Amber
+
+            const datasets = keys.map((year, idx) => ({
+                label: year,
+                data: seasonalData[year].map(d => d.value),
+                borderColor: colors[idx % colors.length],
+                borderWidth: 2,
+                pointRadius: 0,
+                tension: 0.3,
+                fill: false
+            }));
+
+            const ctx = seasonalChartCanvas.value.getContext('2d');
+            seasonalChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: { legend: { display: true, labels: { color: '#cbd5e1' } } },
+                    scales: {
+                        x: { grid: { color: 'rgba(255,255,255,0.05)' } },
+                        y: { grid: { color: 'rgba(255,255,255,0.05)' } }
+                    }
+                }
+            });
         };
 
         const formatNumber = (num) => {

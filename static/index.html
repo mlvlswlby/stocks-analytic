@@ -276,20 +276,30 @@
             <div class="lg:col-span-2 space-y-6">
 
                 <div class="glass-card rounded-2xl p-1 overflow-hidden">
-                    <div class="flex border-b border-slate-700/50 bg-slate-800/30">
+                    <div class="flex border-b border-slate-700/50 bg-slate-800/30 overflow-x-auto">
                         <button @click="activeTab = 'chart'"
                             :class="{'bg-slate-700/50 text-blue-400 border-b-2 border-blue-400': activeTab === 'chart'}"
-                            class="flex-1 py-4 font-bold transition-all hover:bg-slate-700/30">
-                            <i class="fa-solid fa-chart-candlestick mr-2"></i> Chart
+                            class="flex-1 py-4 px-4 font-bold transition-all hover:bg-slate-700/30 whitespace-nowrap">
+                            <i class="fa-solid fa-chart-line mr-2"></i> Chart
+                        </button>
+                        <button @click="activeTab = 'forecasting'"
+                            :class="{'bg-slate-700/50 text-blue-400 border-b-2 border-blue-400': activeTab === 'forecasting'}"
+                            class="flex-1 py-4 px-4 font-bold transition-all hover:bg-slate-700/30 whitespace-nowrap">
+                            <i class="fa-solid fa-wand-magic-sparkles mr-2"></i> Forecasting
+                        </button>
+                        <button @click="activeTab = 'seasonal'"
+                            :class="{'bg-slate-700/50 text-blue-400 border-b-2 border-blue-400': activeTab === 'seasonal'}"
+                            class="flex-1 py-4 px-4 font-bold transition-all hover:bg-slate-700/30 whitespace-nowrap">
+                            <i class="fa-solid fa-calendar-alt mr-2"></i> Seasonal
                         </button>
                         <button @click="activeTab = 'fundamentals'"
                             :class="{'bg-slate-700/50 text-blue-400 border-b-2 border-blue-400': activeTab === 'fundamentals'}"
-                            class="flex-1 py-4 font-bold transition-all hover:bg-slate-700/30">
+                            class="flex-1 py-4 px-4 font-bold transition-all hover:bg-slate-700/30 whitespace-nowrap">
                             <i class="fa-solid fa-table mr-2"></i> Fundamentals
                         </button>
                         <button @click="activeTab = 'about'"
                             :class="{'bg-slate-700/50 text-blue-400 border-b-2 border-blue-400': activeTab === 'about'}"
-                            class="flex-1 py-4 font-bold transition-all hover:bg-slate-700/30">
+                            class="flex-1 py-4 px-4 font-bold transition-all hover:bg-slate-700/30 whitespace-nowrap">
                             <i class="fa-solid fa-info-circle mr-2"></i> About
                         </button>
                     </div>
@@ -310,8 +320,26 @@
                                 <button @click="changeTimeframe('5y')"
                                     class="px-3 py-1 text-xs font-semibold bg-slate-800 hover:bg-blue-500/20 text-slate-300 hover:text-blue-300 rounded transition-colors">5Y</button>
                             </div>
-                            <div ref="chartContainer"
-                                class="chart-container rounded-xl overflow-hidden shadow-2xl border border-slate-700/50 h-[400px]">
+                            <div class="relative h-[400px] w-full">
+                                <canvas ref="mainChartCanvas"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Forecasting Tab -->
+                        <div v-show="activeTab === 'forecasting'" class="h-full">
+                            <h4 class="text-sm font-bold text-slate-400 uppercase mb-4 text-center">3-Month Price
+                                Projection (Linear Regression)</h4>
+                            <div class="relative h-[400px] w-full">
+                                <canvas ref="forecastChartCanvas"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Seasonal Tab -->
+                        <div v-show="activeTab === 'seasonal'" class="h-full">
+                            <h4 class="text-sm font-bold text-slate-400 uppercase mb-4 text-center">Seasonal Performance
+                                (Last 3 Years)</h4>
+                            <div class="relative h-[400px] w-full">
+                                <canvas ref="seasonalChartCanvas"></canvas>
                             </div>
                         </div>
 
