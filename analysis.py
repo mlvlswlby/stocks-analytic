@@ -24,9 +24,12 @@ def calculate_technicals(df: pd.DataFrame):
     stoch = ta.stoch(df['High'], df['Low'], df['Close'])
     if stoch is not None and not stoch.empty:
         # Rename columns to standardized names for easier access
-        # stoch columns are usually k, d, (and maybe j)
-        stoch.columns = ['K', 'D']
-        df = pd.concat([df, stoch], axis=1)
+        # Ensure we only take the first two check logic (usually K, D)
+        # Fix: If pandas_ta returns 3 columns (e.g. K, D, J or similar), we slice.
+        if stoch.shape[1] >= 2:
+            stoch = stoch.iloc[:, :2]
+            stoch.columns = ['K', 'D']
+            df = pd.concat([df, stoch], axis=1)
     
     return df
 
