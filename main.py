@@ -4,7 +4,10 @@ from fastapi.middleware.cors import CORSMiddleware
 import yfinance as yf
 import pandas as pd
 import json
-from .analysis import calculate_technicals, detect_candle_patterns, detect_chart_patterns, generate_recommendation
+try:
+    from .analysis import calculate_technicals, detect_candle_patterns, detect_chart_patterns, generate_recommendation
+except ImportError:
+    from analysis import calculate_technicals, detect_candle_patterns, detect_chart_patterns, generate_recommendation
 
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
