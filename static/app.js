@@ -382,9 +382,20 @@ const App = {
             });
         };
 
-        const formatNumber = (num) => {
+        const formatNumber = (num, symbol) => {
             if (num === null || num === undefined) return '-';
-            return new Intl.NumberFormat('en-US', { notation: "compact", maximumFractionDigits: 2 }).format(num);
+
+            let currency = 'USD';
+            if (currentStock.value && (currentStock.value.endsWith('.JK') || currentStock.value.endsWith('.ID'))) {
+                currency = 'IDR';
+            }
+
+            // Using Intl.NumberFormat for correct currency formatting
+            return new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: currency,
+                maximumFractionDigits: 2
+            }).format(num);
         };
 
         const getScoreColor = (score) => {
