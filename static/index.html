@@ -51,7 +51,10 @@
         <!-- Header & Search -->
         <header class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4 pt-4">
             <div class="flex items-center gap-3 cursor-pointer" @click="goBack">
-                <i class="fa-solid fa-layer-group text-4xl text-blue-500"></i>
+                <div
+                    class="p-2 bg-gradient-to-br from-blue-500/20 to-teal-500/20 rounded-lg border border-blue-500/30 shadow-lg shadow-blue-500/10 backdrop-blur-sm">
+                    <i class="fa-solid fa-chart-simple text-3xl text-blue-400"></i>
+                </div>
                 <h1
                     class="text-3xl font-black bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-teal-400 tracking-tight">
                     Stocks Analytic
@@ -170,19 +173,30 @@
                     </div>
 
                     <div class="flex justify-between items-start mb-4 relative z-10">
-                        <div class="flex items-center gap-4">
-                            <img :src="stockDetails.logo_url || `https://ui-avatars.com/api/?name=${stockDetails.symbol}&background=0f172a&color=3b82f6&bold=true`"
-                                class="w-16 h-16 rounded-lg bg-white/5 p-1 object-contain shadow-lg border border-slate-700"
+                        <!-- Left: Text -->
+                        <div>
+                            <h2 class="text-4xl font-black tracking-tight flex items-center gap-3">
+                                {{ stockDetails.symbol }}
+                                <span
+                                    class="px-3 py-1 rounded bg-slate-700/50 border border-slate-600/50 text-xs font-bold text-slate-400">{{
+                                    stockDetails.exchange || 'MARKET' }}</span>
+                            </h2>
+                            <p class="text-slate-300 font-medium">{{ stockDetails.name }}</p>
+                        </div>
+
+                        <!-- Right: Logo (Circular & Multi-fallback) -->
+                        <div class="flex-shrink-0 ml-6">
+                            <!-- Try exact symbol match on TradingView, then Google Favicon as robust fallback -->
+                            <img :src="`https://s3-symbol-logo.tradingview.com/${stockDetails.symbol.toLowerCase()}.svg`"
+                                class="w-20 h-20 rounded-full bg-slate-800 p-2 object-contain shadow-2xl border-2 border-slate-700/50 hover:scale-110 transition-transform duration-300 pointer-events-none select-none"
                                 alt="Logo"
-                                @error="$event.target.src=`https://ui-avatars.com/api/?name=${stockDetails.symbol}&background=0f172a&color=3b82f6&bold=true`">
-                            <div>
-                                <h2 class="text-4xl font-black tracking-tight">{{ stockDetails.symbol }}</h2>
-                                <p class="text-slate-300 font-medium">{{ stockDetails.name }}</p>
-                            </div>
+                                @error="$event.target.src = `https://t3.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=http://${stockDetails.domain}&size=128`">
                         </div>
                     </div>
 
-                    <div class="text-3xl font-bold mb-6 text-blue-400 font-mono">${{ stockDetails.price }}</div>
+                    <div class="text-4xl font-bold mb-6 text-blue-400 font-mono tracking-tight">
+                        {{ formatNumber(stockDetails.price) }}
+                    </div>
 
                     <div class="pt-6 border-t border-slate-700 relative z-10">
                         <div class="flex justify-between items-center mb-2">
