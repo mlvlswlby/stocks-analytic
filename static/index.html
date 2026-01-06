@@ -70,11 +70,18 @@
                 </form>
 
                 <!-- Autocomplete Dropdown -->
-                <div v-if="showSuggestions && searchResults.length > 0" class="suggestions-dropdown animate-fade-in">
-                    <div v-for="item in searchResults" :key="item.symbol" @click="selectSuggestion(item.symbol)"
-                        class="suggestion-item">
-                        <span class="font-bold text-white">{{ item.symbol }}</span>
-                        <span class="text-xs text-slate-400 truncate ml-2">{{ item.name }}</span>
+                <div v-if="showSuggestions" class="suggestions-dropdown animate-fade-in">
+                    <div v-if="searchResults.length > 0">
+                        <div v-for="item in searchResults" :key="item.symbol" @click="selectSuggestion(item.symbol)"
+                            class="suggestion-item">
+                            <span class="font-bold text-white">{{ item.symbol }}</span>
+                            <span class="text-xs text-slate-400 truncate ml-2">{{ item.name }}</span>
+                        </div>
+                    </div>
+                    <div v-else class="p-4 text-center text-slate-400 text-sm">
+                        <p>Ticker not found in local DB.</p>
+                        <p class="text-xs mt-1 text-slate-500">Press <kbd
+                                class="font-sans font-bold text-slate-300">Enter</kbd> to search online.</p>
                     </div>
                 </div>
             </div>
@@ -374,7 +381,7 @@
                                 <div class="bg-slate-800/50 border border-slate-700 p-4 rounded-xl text-center">
                                     <p class="text-xs text-slate-400 uppercase tracking-wider mb-1">Market Cap</p>
                                     <p class="font-black text-2xl text-emerald-400">{{
-                                        formatNumber(fundamentals.ratios.MarketCap) }}</p>
+                                        formatCompactNumber(fundamentals.ratios.MarketCap) }}</p>
                                 </div>
                             </div>
 

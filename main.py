@@ -70,10 +70,6 @@ def search_stocks(q: str = Query(..., min_length=1)):
     """
     q_upper = q.upper()
     results = [s for s in STOCKS_DB if q_upper in s["symbol"] or q_upper in s["name"].upper()]
-    
-    # If no local results, add the query itself as a fallback option
-    if not results:
-        results.append({"symbol": q_upper, "name": q_upper})
         
     return clean_nans({"results": results[:5]})
 
