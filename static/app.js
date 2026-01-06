@@ -385,15 +385,27 @@ const App = {
         const formatNumber = (num, symbol) => {
             if (num === null || num === undefined) return '-';
 
-            let currency = 'USD';
+            // Special handling for Indonesia
             if (currentStock.value && (currentStock.value.endsWith('.JK') || currentStock.value.endsWith('.ID'))) {
-                currency = 'IDR';
+                // Manual format for " Rp." request
+                return ' Rp. ' + new Intl.NumberFormat('id-ID', {
+                    minimumFractionDigits: 0,
+                    maximumFractionDigits: 0
+                }).format(num);
             }
 
-            // Using Intl.NumberFormat for correct currency formatting
+            // Default USD
             return new Intl.NumberFormat('en-US', {
                 style: 'currency',
-                currency: currency,
+                currency: 'USD',
+                maximumFractionDigits: 2
+            }).format(num);
+        };
+
+        const formatCompactNumber = (num) => {
+            if (num === null || num === undefined) return '-';
+            return new Intl.NumberFormat('en-US', {
+                notation: "compact",
                 maximumFractionDigits: 2
             }).format(num);
         };
@@ -437,6 +449,7 @@ const App = {
             activeTab,
             recommendationClass,
             formatNumber,
+            formatCompactNumber,
             idxStocks,
             usStocks,
             loadingList,
