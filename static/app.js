@@ -17,6 +17,9 @@ const App = {
         const error = ref(null);
         const activeTab = ref('chart');
 
+        // Search State
+        const isSearching = ref(false);
+
         // Dashboard Lists
         const idxStocks = ref([]);
         const usStocks = ref([]);
@@ -56,23 +59,30 @@ const App = {
             if (searchQuery.value.length < 1) {
                 searchResults.value = [];
                 showSuggestions.value = false;
+                isSearching.value = false;
                 return;
             }
+
+            isSearching.value = true;
+            showSuggestions.value = true; // Show immediately to show loader
 
             searchDebounce.value = setTimeout(async () => {
                 try {
                     const data = await fetchAPI(`search?q=${searchQuery.value}`);
                     searchResults.value = data.results;
-                    showSuggestions.value = true;
                 } catch (e) {
                     console.error("Search failed", e);
+                    searchResults.value = [];
+                } finally {
+                    isSearching.value = false;
                 }
-            }, 300);
+            }, 500); // 500ms delay to avoid spamming Yahoo
         };
 
         const selectSuggestion = (symbol) => {
             searchQuery.value = symbol;
             showSuggestions.value = false;
+            searchResults.value = []; // Clear results to hide dropdown
             loadStock(symbol);
         };
 
@@ -436,6 +446,7 @@ const App = {
             searchQuery,
             searchResults,
             showSuggestions,
+            isSearching,
             onSearchInput,
             selectSuggestion,
             currentStock,

@@ -8,6 +8,7 @@ import numpy as np
 import json
 import math
 import os
+import requests
 
 try:
     from .analysis import calculate_technicals, detect_candle_patterns, detect_chart_patterns, generate_recommendation, calculate_forecast, calculate_seasonal
@@ -64,22 +65,46 @@ async def favicon():
     return Response(status_code=204)
 
 @app.get("/api/search")
+@app.get("/api/search")
 def search_stocks(q: str = Query(..., min_length=1)):
     """
-    Autocomplete search from local DB or passthrough.
+    Online Autocomplete search using Yahoo Finance API.
     """
-    q_upper = q.upper()
-    results = [s for s in STOCKS_DB if q_upper in s["symbol"] or q_upper in s["name"].upper()]
-    
-    # Fallback: Allow user to search whatever they typed
-    if not results:
-        # Suggest suffix if 4 chars (likely IDX)
-        if len(q_upper) == 4:
-            results.append({"symbol": f"{q_upper}.JK", "name": "Search on IDX"})
+    try:
+        # Proxy to Yahoo Finance Autocomplete
+        # query2.finance.yahoo.com/v1/finance/search?q={q}&lang=en-US®ion=US&quotesCount=10&newsCount=0
+        url = "https://query2.finance.yahoo.com/v1/finance/search"
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        }
+        params = {
+            "q": q,
+            "quotesCount": 10,
+            "newsCount": 0,
+            "enableFuzzyQuery": "false",
+            "quotesQueryId": "tss_match_phrase_query"
+        }
         
-        results.append({"symbol": q_upper, "name": "Search Symbol"})
+        resp = requests.get(url, params=params, headers=headers, timeout=5)
+        data = resp.json()
         
-    return clean_nans({"results": results[:5]})
+        results = []
+        if "quotes" in data:
+            for quote in data["quotes"]:
+                # Only interested in Equities/ETFs primarily, but let's take all to be safe
+                if quote.get("quoteType", "") in ["EQUITY", "ETF", "MUTUALFUND", "INDEX", "FUTURE", "CURRENCY"]:
+                    results.append({
+                        "symbol": quote.get("symbol"),
+                        "name": quote.get("longname") or quote.get("shortname") or quote.get("symbol"),
+                        "exchange": quote.get("exchange", "")
+                    })
+        
+        return clean_nans({"results": results})
+        
+    except Exception as e:
+        print(f"Search API Error: {e}")
+        # Fallback to local filtering if online fails
+        return clean_nans({"results": []})
 
 def get_stock_data(ticker: str, period="2y", interval="1d"):
     stock = yf.Ticker(ticker)
