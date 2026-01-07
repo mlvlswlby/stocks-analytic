@@ -11,10 +11,10 @@ import os
 import requests
 
 try:
-    from .analysis import calculate_technicals, detect_candle_patterns, detect_chart_patterns, generate_recommendation, calculate_forecast, calculate_seasonal
+    from .analysis import calculate_technicals, detect_chart_patterns, generate_recommendation, calculate_forecast, calculate_seasonal
     from .tickers import STOCKS_DB
 except ImportError:
-    from analysis import calculate_technicals, detect_candle_patterns, detect_chart_patterns, generate_recommendation, calculate_forecast, calculate_seasonal
+    from analysis import calculate_technicals, detect_chart_patterns, generate_recommendation, calculate_forecast, calculate_seasonal
     from tickers import STOCKS_DB
 
 # Utility to clean NaNs for JSON compliance
@@ -166,7 +166,6 @@ def get_technicals(ticker: str):
     df = calculate_technicals(df)
     
     # Get patterns & recommendation
-    candle_patterns = detect_candle_patterns(df)
     chart_patterns = detect_chart_patterns(df)
     recommendation, score, reasons, trend_details = generate_recommendation(df)
     
@@ -231,7 +230,6 @@ def get_technicals(ticker: str):
             "Stochastic_D": last.get("D"),
         },
         "patterns": {
-            "candle": candle_patterns,
             "chart": chart_patterns
         }
     })

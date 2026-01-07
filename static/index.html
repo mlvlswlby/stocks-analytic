@@ -287,12 +287,6 @@
                     </div>
 
                     <div class="flex flex-wrap gap-2">
-                        <template v-for="(val, name) in technicals.patterns.candle" :key="name">
-                            <span v-if="val"
-                                class="px-3 py-1 bg-purple-500/20 border border-purple-500/50 text-purple-300 rounded-full text-xs font-bold shadow-sm">
-                                {{ name }}
-                            </span>
-                        </template>
                         <span v-for="p in technicals.patterns.chart" :key="p"
                             class="px-3 py-1 bg-amber-500/20 border border-amber-500/50 text-amber-300 rounded-full text-xs font-bold shadow-sm">
                             {{ p }}
