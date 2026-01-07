@@ -72,8 +72,8 @@ def search_stocks(q: str = Query(..., min_length=1)):
     """
     try:
         # Proxy to Yahoo Finance Autocomplete
-        # query2.finance.yahoo.com/v1/finance/search?q={q}&lang=en-US®ion=US&quotesCount=10&newsCount=0
-        url = "https://query2.finance.yahoo.com/v1/finance/search"
+        # Using query1 as it can be faster/less throttled sometimes
+        url = "https://query1.finance.yahoo.com/v1/finance/search"
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
         }
@@ -85,7 +85,8 @@ def search_stocks(q: str = Query(..., min_length=1)):
             "quotesQueryId": "tss_match_phrase_query"
         }
         
-        resp = requests.get(url, params=params, headers=headers, timeout=5)
+        # Reduced timeout to 3s for snappier experience (or fail fast)
+        resp = requests.get(url, params=params, headers=headers, timeout=3)
         data = resp.json()
         
         results = []

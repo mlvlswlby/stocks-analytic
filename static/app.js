@@ -54,8 +54,15 @@ const App = {
             }
         };
 
+        // Search Abort Controller
+        let searchAbortController = null;
+
         const onSearchInput = () => {
             if (searchDebounce.value) clearTimeout(searchDebounce.value);
+
+            // Cancel previous request if exists
+            if (searchAbortController) searchAbortController.abort();
+
             if (searchQuery.value.length < 1) {
                 searchResults.value = [];
                 showSuggestions.value = false;
@@ -64,19 +71,29 @@ const App = {
             }
 
             isSearching.value = true;
-            showSuggestions.value = true; // Show immediately to show loader
+            showSuggestions.value = true;
 
             searchDebounce.value = setTimeout(async () => {
+                searchAbortController = new AbortController();
                 try {
-                    const data = await fetchAPI(`search?q=${searchQuery.value}`);
+                    // Manually fetch with our specific signal
+                    const res = await fetch(`/api/search?q=${searchQuery.value}`, { signal: searchAbortController.signal });
+                    if (!res.ok) throw new Error(res.statusText);
+                    const data = await res.json();
+
                     searchResults.value = data.results;
                 } catch (e) {
+                    if (e.name === 'AbortError') {
+                        // Ignore aborts
+                        return;
+                    }
                     console.error("Search failed", e);
                     searchResults.value = [];
                 } finally {
                     isSearching.value = false;
+                    searchAbortController = null;
                 }
-            }, 500); // 500ms delay to avoid spamming Yahoo
+            }, 300); // Reduce debounce to 300ms for snappier feel, relying on Abort to handle load
         };
 
         const selectSuggestion = (symbol) => {
@@ -169,6 +186,8 @@ const App = {
             loading.value = true;
             error.value = null;
             currentStock.value = ticker;
+
+            // Reset Data
             stockDetails.value = null;
             technicals.value = null;
             fundamentals.value = null;
@@ -179,41 +198,50 @@ const App = {
             if (seasonalChart) { seasonalChart.destroy(); seasonalChart = null; }
 
             try {
-                const [details, tech, fund, chartData] = await Promise.all([
+                // STAGE 1: Critical Data (Header & Main Chart) - Fast
+                // We run price/details and chart in parallel
+                const [details, chartData] = await Promise.all([
                     fetchAPI(`stock/${ticker}`),
-                    fetchAPI(`stock/${ticker}/technicals`),
-                    fetchAPI(`stock/${ticker}/fundamentals`),
                     fetchAPI(`stock/${ticker}/chart?range=1y`)
                 ]);
 
                 stockDetails.value = details;
-                technicals.value = tech;
-                fundamentals.value = fund;
                 stockDetails.value.chartData = chartData;
 
-                // Fetch extra data for tabs
-                // We do it non-blocking or just wait? Let's wait to be simple
-                const [forecast, seasonal] = await Promise.all([
+                // Render UI immediately
+                loading.value = false;
+                await nextTick();
+                renderMainChart(chartData);
+
+                // STAGE 2: Heavy Analysis (Background) - Technicals, Fundamentals, Patterns
+                // We don't await this block to block the UI, but we catch errors separately
+                Promise.all([
+                    fetchAPI(`stock/${ticker}/technicals`),
+                    fetchAPI(`stock/${ticker}/fundamentals`),
                     fetchAPI(`stock/${ticker}/forecast`),
                     fetchAPI(`stock/${ticker}/seasonal`)
-                ]);
-                stockDetails.value.forecastData = forecast;
-                stockDetails.value.seasonalData = seasonal;
+                ]).then(([tech, fund, forecast, seasonal]) => {
+                    technicals.value = tech;
+                    fundamentals.value = fund;
 
-                await nextTick();
-                if (activeTab.value === 'chart') {
-                    // Small delay to ensure v-show has applied layout
-                    setTimeout(() => renderMainChart(chartData), 50);
-                } else if (activeTab.value === 'forecasting') {
-                    setTimeout(() => renderForecastChart(chartData, forecast), 50);
-                } else if (activeTab.value === 'seasonal') {
-                    setTimeout(() => renderSeasonalChart(seasonal), 50);
-                }
+                    // Attach extra data safely
+                    if (stockDetails.value) {
+                        stockDetails.value.forecastData = forecast;
+                        stockDetails.value.seasonalData = seasonal;
+                    }
+
+                    // If user switched tabs while loading, render those charts now
+                    if (activeTab.value === 'forecasting') renderForecastChart(stockDetails.value?.chartData, forecast);
+                    if (activeTab.value === 'seasonal') renderSeasonalChart(seasonal);
+
+                }).catch(err => {
+                    console.error("Background data load failed", err);
+                    // access error ref if needed, or just show partial data
+                });
 
             } catch (e) {
                 console.error(e);
                 error.value = `Failed to load ${ticker}. ${e.message}`;
-            } finally {
                 loading.value = false;
             }
         };
