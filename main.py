@@ -70,6 +70,14 @@ def search_stocks(q: str = Query(..., min_length=1)):
     """
     q_upper = q.upper()
     results = [s for s in STOCKS_DB if q_upper in s["symbol"] or q_upper in s["name"].upper()]
+    
+    # Fallback: Allow user to search whatever they typed
+    if not results:
+        # Suggest suffix if 4 chars (likely IDX)
+        if len(q_upper) == 4:
+            results.append({"symbol": f"{q_upper}.JK", "name": "Search on IDX"})
+        
+        results.append({"symbol": q_upper, "name": "Search Symbol"})
         
     return clean_nans({"results": results[:5]})
 

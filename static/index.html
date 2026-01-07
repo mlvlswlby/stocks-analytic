@@ -15,6 +15,9 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Custom CSS -->
     <link rel="stylesheet" href="/static/style.css">
+    <!-- Favicon: Chart Icon -->
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📈</text></svg>">
     <style>
         .suggestions-dropdown {
             position: absolute;
@@ -195,7 +198,7 @@
                         <div class="flex-shrink-0 ml-6">
                             <!-- Try exact symbol match on TradingView, then Google Favicon as robust fallback -->
                             <img :src="`https://s3-symbol-logo.tradingview.com/${stockDetails.symbol.toLowerCase()}.svg`"
-                                class="w-20 h-20 rounded-full bg-slate-800 p-2 object-contain shadow-2xl border-2 border-slate-700/50 hover:scale-110 transition-transform duration-300 pointer-events-none select-none"
+                                class="w-32 h-32 rounded-full object-contain hover:scale-105 transition-transform duration-300 pointer-events-none select-none"
                                 alt="Logo"
                                 @error="$event.target.src = `https://t3.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=http://${stockDetails.domain}&size=128`">
                         </div>
