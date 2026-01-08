@@ -3,6 +3,7 @@ import pandas as pd
 import pandas_ta as ta
 import numpy as np
 from scipy.signal import argrelextrema
+from scipy.stats import linregress
 
 def calculate_technicals(df: pd.DataFrame):
     """
@@ -62,8 +63,6 @@ def detect_chart_patterns(df: pd.DataFrame):
         
     # 2. Trend / Channel Analysis (Linear Regression Slope)
     # Check last 20 days (approx 1 month)
-    import numpy as np
-    from scipy.stats import linregress
     
     window = 20
     if len(df) >= window:
