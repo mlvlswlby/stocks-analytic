@@ -139,12 +139,22 @@ def detect_chart_patterns(df: pd.DataFrame):
              patterns.append("Double Bottom")
              
         # --- Triangles (based on slope of peaks/troughs) ---
-        # Slopes
-        slope_highs = (p3 - p1) / 3 # Rough slope proxy
-        slope_lows = (t3 - t1) / 3
+    # 2. Trend / Channel Analysis (Linear Regression Slope)
+    # Check last 20 days (approx 1 month)
+    
+    window = 20
+    if len(df) >= window:
+        y = close.iloc[-window:].values
+        x = np.arange(len(y))
+        slope, intercept, r_value, p_value, std_err = linregress(x, y)
         
-        # Symmetrical: Highs down, Lows up
-        if p1 > p2 > p3 and t1 < t2 < t3:
+        # Normalize slope by price to get percentage
+        norm_slope = slope / last['Close']
+        
+        if norm_slope > 0.005: # > 0.5% per day rise approx
+            patterns.append("Uptrend Channel")
+        elif norm_slope < -0.005:
+            patterns.append("Downtrend Channel")
             patterns.append("Symmetrical Triangle")
             
         # Ascending: Highs flat, Lows up
@@ -197,17 +207,11 @@ def detect_chart_patterns(df: pd.DataFrame):
 
 def generate_recommendation(df: pd.DataFrame):
     """
-    Generates a Buy/Sell/Neutral recommendation based on scores.
-    """
-    if df.empty:
-        return "NEUTRAL", 50
-def generate_recommendation(df):
-    """
     Generate a Buy/Sell/Neutral recommendation based on indicators.
-    Returns: (Recommendation String, Score 0-100, List of Reasons)
+    Returns: (Recommendation String, Score 0-100, List of Reasons, Trend Details)
     """
     if df.empty:
-        return "NEUTRAL", 50, []
+        return "NEUTRAL", 50, [], {}
         
     last = df.iloc[-1]
     score = 50

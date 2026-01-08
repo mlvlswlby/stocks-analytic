@@ -39,7 +39,7 @@ const App = {
         // API Helper
         const fetchAPI = async (endpoint) => {
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 20000); // 20s timeout
+            const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
 
             try {
                 const res = await fetch(`/api/${endpoint}`, { signal: controller.signal });
