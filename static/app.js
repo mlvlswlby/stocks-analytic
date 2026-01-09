@@ -118,26 +118,19 @@ const App = {
             });
         };
 
-        const initDashboard = async () => {
-            loadingList.value = true;
-            const idxCandidates = [
-                'BBCA.JK', 'BBRI.JK', 'BMRI.JK', 'BBNI.JK',
-                'TLKM.JK', 'ASII.JK', 'UNVR.JK', 'GOTO.JK',
-                'ADRO.JK', 'ICBP.JK'
-            ];
-            const usCandidates = [
-                'NVDA', 'TSLA', 'AAPL', 'MSFT', 'AMZN',
-                'GOOGL', 'META', 'AMD', 'NFLX', 'INTC'
-            ];
+        // Dashboard Lists
+        const marketData = ref({ idx: [], nasdaq: [] });
+        const loadingMarket = ref(true);
 
+        const initDashboard = async () => {
+            loadingMarket.value = true;
             try {
-                await processBatch(idxCandidates, idxStocks);
-                await processBatch(usCandidates, usStocks);
+                const data = await fetchAPI('market-summary');
+                marketData.value = data;
             } catch (e) {
-                console.error("Dashboard error", e);
+                console.error("Market Summary Error", e);
             } finally {
-                loadingList.value = false;
-                listProgress.value = '';
+                loadingMarket.value = false;
             }
         };
 

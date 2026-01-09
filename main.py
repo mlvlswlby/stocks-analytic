@@ -104,6 +104,58 @@ def search_stocks(q: str = Query(..., min_length=1)):
         # Fallback to empty list or basic echo if API fails
         return clean_nans({"results": []})
 
+@app.get("/api/market-summary")
+def get_market_summary():
+    """
+    Get real-time data for Top 10 IDX and Nasdaq stocks for ticker tapes.
+    """
+    # Fixed Top Market Cap Lists
+    idx_tickers = ['BBCA.JK', 'BBRI.JK', 'BMRI.JK', 'BBNI.JK', 'TLKM.JK', 'ASII.JK', 'UNVR.JK', 'ICBP.JK', 'GOTO.JK', 'ADRO.JK']
+    nasdaq_tickers = ['NVDA', 'AAPL', 'MSFT', 'AMZN', 'GOOGL', 'META', 'TSLA', 'AMD', 'NFLX', 'INTC']
+    
+    try:
+        all_tickers = idx_tickers + nasdaq_tickers
+        # Download last 5 days to ensure we have previous close (handling weekends)
+        df = yf.download(all_tickers, period="5d", progress=False)
+        
+        # yfinance returns MultiIndex columns: (Price, Ticker)
+        # We want 'Close'
+        close_df = df['Close']
+        
+        batch_results = {"idx": [], "nasdaq": []}
+        
+        for t in all_tickers:
+            try:
+                if t not in close_df:
+                    continue
+                    
+                series = close_df[t].dropna()
+                if len(series) >= 2:
+                    current = series.iloc[-1]
+                    prev = series.iloc[-2]
+                    change = current - prev
+                    pchange = (change / prev) * 100
+                    
+                    item = {
+                        "symbol": t,
+                        "price": float(current), # Ensure explicit float for JSON
+                        "change": float(change),
+                        "pchange": float(pchange)
+                    }
+                    
+                    if t in idx_tickers:
+                        batch_results["idx"].append(item)
+                    else:
+                        batch_results["nasdaq"].append(item)
+            except Exception:
+                continue
+                
+        return clean_nans(batch_results)
+
+    except Exception as e:
+        print(f"Market Summary Error: {e}")
+        return {"idx": [], "nasdaq": []}
+
 def get_stock_data(ticker: str, period="2y", interval="1d"):
     stock = yf.Ticker(ticker)
     df = stock.history(period=period, interval=interval)
