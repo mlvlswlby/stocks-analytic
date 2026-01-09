@@ -105,44 +105,78 @@ def detect_chart_patterns(df: pd.DataFrame, order=5):
     
     return list(set(patterns))
 
-def detect_chart_patterns(df: pd.DataFrame):
+def detect_chart_patterns(df: pd.DataFrame, order=5):
     """
-    Experimental detection of chart patterns using local extrema.
+    Detects chart patterns (Double Top/Bottom, Head & Shoulders) using local extrema.
+    Returns a unique list of detected pattern names.
     """
     patterns = []
     
-    # Need enough data
     if len(df) < 50:
-        return patterns
+        return []
+
+    # Get local peaks and troughs
+    # order=5 means look for max/min in a window of 5 candles on each side
+    df['min'] = df.iloc[argrelextrema(df['Close'].values, np.less_equal, order=order)[0]]['Close']
+    df['max'] = df.iloc[argrelextrema(df['Close'].values, np.greater_equal, order=order)[0]]['Close']
+    
+    # Extract peaks and troughs as simple lists of (index, price)
+    peaks = df[df['max'].notna()]['max'].reset_index()
+    troughs = df[df['min'].notna()]['min'].reset_index()
+    
+    if len(peaks) < 3 or len(troughs) < 3:
+        return []
+
+    # Helper to check proximity (e.g. within 3% price difference)
+    def is_close(p1, p2, threshold=0.03):
+        return abs(p1 - p2) / p1 < threshold
+
+    # --- Double Top ---
+    # Look at last 2 peaks. If they are similar height and separated by a trough.
+    last_peaks = peaks.iloc[-2:]
+    if len(last_peaks) == 2:
+        p1 = last_peaks.iloc[0]['max']
+        p2 = last_peaks.iloc[1]['max']
+        if is_close(p1, p2):
+            patterns.append("Double Top")
+
+    # --- Double Bottom ---
+    # Look at last 2 troughs.
+    last_troughs = troughs.iloc[-2:]
+    if len(last_troughs) == 2:
+        t1 = last_troughs.iloc[0]['min']
+        t2 = last_troughs.iloc[1]['min']
+        if is_close(t1, t2):
+            patterns.append("Double Bottom")
+
+    # --- Head and Shoulders ---
+    # Look at last 3 peaks.
+    last_3_peaks = peaks.iloc[-3:]
+    if len(last_3_peaks) == 3:
+        l_shoulder = last_3_peaks.iloc[0]['max']
+        head = last_3_peaks.iloc[1]['max']
+        r_shoulder = last_3_peaks.iloc[2]['max']
         
-    # Find local peaks and troughs
-    n = 5 # window size
-    df['min'] = df.iloc[argrelextrema(df['Close'].values, np.less_equal, order=n)[0]]['Close']
-    df['max'] = df.iloc[argrelextrema(df['Close'].values, np.greater_equal, order=n)[0]]['Close']
-    
-    # Simple check for simple patterns like Golden Cross recently
-    if len(df) > 1:
-        last = df.iloc[-1]
-        prev = df.iloc[-2]
-        if last['SMA_50'] > last['SMA_200'] and prev['SMA_50'] <= prev['SMA_200']:
-            patterns.append("Golden Cross")
-        if last['SMA_50'] < last['SMA_200'] and prev['SMA_50'] >= prev['SMA_200']:
-            patterns.append("Death Cross")
+        if head > l_shoulder and head > r_shoulder and is_close(l_shoulder, r_shoulder, threshold=0.05):
+            patterns.append("Head & Shoulders")
+
+    # --- Inverse Head and Shoulders ---
+    # Look at last 3 troughs.
+    last_3_troughs = troughs.iloc[-3:]
+    if len(last_3_troughs) == 3:
+        l_shoulder = last_3_troughs.iloc[0]['min']
+        head = last_3_troughs.iloc[1]['min']
+        r_shoulder = last_3_troughs.iloc[2]['min']
+        
+        if head < l_shoulder and head < r_shoulder and is_close(l_shoulder, r_shoulder, threshold=0.05):
+            patterns.append("Inverse Head & Shoulders")
             
-    # Advanced: Head and Shoulders (approximation)
-    # Looking for Peak A (Shoulder), Peak B (Head, higher), Peak C (Shoulder, lower than Head)
-    # This is complex to code reliably without visual check, we will use a simplified logic or placeholder
-    # For now, let's stick to Trend Analysis
+    # Clean up DF
+    df.drop(columns=['min', 'max'], inplace=True, errors='ignore')
     
-    return patterns
+    return list(set(patterns))
 
 def generate_recommendation(df: pd.DataFrame):
-    """
-    Generates a Buy/Sell/Neutral recommendation based on scores.
-    """
-    if df.empty:
-        return "NEUTRAL", 50
-def generate_recommendation(df):
     """
     Generate a Buy/Sell/Neutral recommendation based on indicators.
     Returns: (Recommendation String, Score 0-100, List of Reasons)
