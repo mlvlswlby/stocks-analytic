@@ -313,8 +313,10 @@
                                 <h2 class="text-4xl font-black tracking-tight flex items-center gap-3">
                                     {{ stockDetails.symbol }}
                                     <span
-                                        class="px-3 py-1 rounded bg-slate-700/50 border border-slate-600/50 text-xs font-bold text-slate-400">{{
-                                        stockDetails.exchange || 'MARKET' }}</span>
+                                        class="px-3 py-1 rounded bg-slate-700/50 border border-slate-600/50 text-xs font-bold text-slate-400">
+                                        {{ stockDetails.symbol.endsWith('.JK') ? 'IDX' : (stockDetails.exchange ===
+                                        'NSDQ' ? 'NSDQ' : 'NSDQ') }}
+                                    </span>
                                 </h2>
                                 <p class="text-slate-300 font-medium">{{ stockDetails.name }}</p>
                             </div>
