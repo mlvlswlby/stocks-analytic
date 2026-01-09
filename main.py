@@ -77,7 +77,7 @@ def search_stocks(q: str = Query(..., min_length=1)):
         }
         params = {
             'q': q,
-            'quotesCount': 10,
+            'quotesCount': 20,
             'newsCount': 0,
             'enableFuzzyQuery': 'false',
             'quotesQueryId': 'tss_match_phrase_query'
