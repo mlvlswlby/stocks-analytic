@@ -232,7 +232,6 @@ def get_technicals(ticker: str):
             "Stochastic_K": last.get("K"),
             "Stochastic_D": last.get("D"),
         },
-        },
         "patterns": {
             "chart": detected_patterns
         }
