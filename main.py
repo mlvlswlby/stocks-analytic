@@ -163,11 +163,14 @@ def get_technicals(ticker: str):
     # Calculate indicators
     df = calculate_technicals(df)
     
-    # Get recommendation
-    # chart_patterns moved to dedicated endpoint for performance
+    # Get patterns & recommendation
+    # candle_patterns = detect_candle_patterns(df) # Deprecated
+    detected_patterns = detect_chart_patterns(df)
     recommendation, score, reasons, trend_details = generate_recommendation(df)
     
-    # --- Fundamental Analysis / Catalyst Injection ---
+    if detected_patterns:
+        score += 10
+        reasons.append(f"Chart Pattern: {', '.join(detected_patterns)}")
     
     # --- Fundamental Analysis / Catalyst Injection ---
     # We fetch info again or reuse if possible. get_stock_details fetches it but we are in get_technicals.
@@ -233,13 +236,6 @@ def get_technicals(ticker: str):
             "chart": detected_patterns
         }
     })
-
-@app.get("/api/stock/{ticker}/patterns")
-def get_patterns(ticker: str):
-    stock, df = get_stock_data(ticker, period="2y") # Needs more history for macro patterns
-    
-    patterns = detect_chart_patterns(df)
-    return {"patterns": patterns}
 
 @app.get("/api/stock/{ticker}/fundamentals")
 def get_fundamentals(ticker: str):
