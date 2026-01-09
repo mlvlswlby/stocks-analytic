@@ -205,11 +205,30 @@ const App = {
                     setTimeout(() => renderSeasonalChart(seasonal), 50);
                 }
 
+                loading.value = false;
+
+                // Load Patterns Asynchronously
+                loadingPatterns.value = true;
+                try {
+                    const patternData = await fetchAPI(`stock/${ticker}/patterns`);
+                    if (technicals.value) {
+                        // Initialize if needed, though backend technicals might not have patterns key anymore
+                        if (!technicals.value.patterns) technicals.value.patterns = {};
+                        technicals.value.patterns.chart = patternData.patterns || [];
+                    }
+                } catch (e) {
+                    console.error("Pattern fetch failed", e);
+                } finally {
+                    loadingPatterns.value = false;
+                }
+
             } catch (e) {
                 console.error(e);
                 error.value = `Failed to load ${ticker}. ${e.message}`;
-            } finally {
                 loading.value = false;
+            } finally {
+                // Ensure loading is false if error occurred before the async part
+                if (error.value) loading.value = false;
             }
         };
 
