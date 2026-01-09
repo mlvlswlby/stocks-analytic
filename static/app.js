@@ -42,7 +42,10 @@ const App = {
             const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
 
             try {
-                const res = await fetch(`/api/${endpoint}`, { signal: controller.signal });
+                const res = await fetch(`/api/${endpoint}`, {
+                    signal: controller.signal,
+                    headers: { 'Cache-Control': 'no-cache' }
+                });
                 clearTimeout(timeoutId);
                 if (!res.ok) {
                     throw new Error(res.statusText);

@@ -118,12 +118,15 @@ def get_stock_data(ticker: str, period="2y", interval="1d"):
 
 @app.get("/api/stock/{ticker}")
 def get_stock_details(ticker: str):
+    print(f"DEBUG: Fetching details for {ticker}")
     # Optimize: Don't fetch history if we just need info.
     stock = yf.Ticker(ticker)
     
     try:
         info = stock.info
-    except Exception:
+        print(f"DEBUG: Info fetched for {ticker}")
+    except Exception as e:
+        print(f"DEBUG: Info fetch failed for {ticker}: {e}")
         info = {}
         
     # Validating symbol via info usually works, but sometimes info is empty.
@@ -154,7 +157,7 @@ def get_stock_details(ticker: str):
         except Exception:
             logo_url = ""
         
-        
+    print(f"DEBUG: Returning details for {ticker}")
     return clean_nans({
         "symbol": ticker,
         "name": info.get("longName", ticker),
@@ -168,15 +171,20 @@ def get_stock_details(ticker: str):
 
 @app.get("/api/stock/{ticker}/technicals")
 def get_technicals(ticker: str):
+    print(f"DEBUG: Computing technicals for {ticker}")
     # Optimize: 1y is enough for SMA 200
     stock, df = get_stock_data(ticker, period="1y")
+    print(f"DEBUG: Data fetched for technicals {ticker}, len={len(df)}")
     
     # Calculate indicators
     df = calculate_technicals(df)
+    print("DEBUG: Indicators calculated")
     
     # Get patterns & recommendation
     chart_patterns = detect_chart_patterns(df)
+    print(f"DEBUG: Patterns detected: {chart_patterns}")
     recommendation, score, reasons, trend_details = generate_recommendation(df)
+    print(f"DEBUG: Recommendation generated: {recommendation}")
     
     # --- Fundamental Analysis / Catalyst Injection ---
     # We fetch info again or reuse if possible. get_stock_details fetches it but we are in get_technicals.
