@@ -15,6 +15,7 @@ const App = {
         const technicals = ref(null);
         const fundamentals = ref(null);
         const loading = ref(false);
+        const loadingPatterns = ref(false);
         const error = ref(null);
         const activeTab = ref('chart');
 
@@ -447,6 +448,7 @@ const App = {
             technicals,
             fundamentals,
             loading,
+            loadingPatterns,
             error,
             loadingSearch,
             handleSearch,
