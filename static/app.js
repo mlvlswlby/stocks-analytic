@@ -8,6 +8,7 @@ const App = {
         const searchResults = ref([]);
         const showSuggestions = ref(false);
         const searchDebounce = ref(null);
+        const loadingSearch = ref(false);
 
         const currentStock = ref(null);
         const stockDetails = ref(null);
@@ -16,9 +17,6 @@ const App = {
         const loading = ref(false);
         const error = ref(null);
         const activeTab = ref('chart');
-
-        // Search State
-        const isSearching = ref(false);
 
         // Dashboard Lists
         const idxStocks = ref([]);
@@ -39,13 +37,10 @@ const App = {
         // API Helper
         const fetchAPI = async (endpoint) => {
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+            const timeoutId = setTimeout(() => controller.abort(), 20000); // 20s timeout
 
             try {
-                const res = await fetch(`/api/${endpoint}`, {
-                    signal: controller.signal,
-                    headers: { 'Cache-Control': 'no-cache' }
-                });
+                const res = await fetch(`/api/${endpoint}`, { signal: controller.signal });
                 clearTimeout(timeoutId);
                 if (!res.ok) {
                     throw new Error(res.statusText);
@@ -57,52 +52,31 @@ const App = {
             }
         };
 
-        // Search Abort Controller
-        let searchAbortController = null;
-
         const onSearchInput = () => {
             if (searchDebounce.value) clearTimeout(searchDebounce.value);
-
-            // Cancel previous request if exists
-            if (searchAbortController) searchAbortController.abort();
-
             if (searchQuery.value.length < 1) {
                 searchResults.value = [];
                 showSuggestions.value = false;
-                isSearching.value = false;
                 return;
             }
 
-            isSearching.value = true;
-            showSuggestions.value = true;
-
+            loadingSearch.value = true;
             searchDebounce.value = setTimeout(async () => {
-                searchAbortController = new AbortController();
                 try {
-                    // Manually fetch with our specific signal
-                    const res = await fetch(`/api/search?q=${searchQuery.value}`, { signal: searchAbortController.signal });
-                    if (!res.ok) throw new Error(res.statusText);
-                    const data = await res.json();
-
+                    const data = await fetchAPI(`search?q=${searchQuery.value}`);
                     searchResults.value = data.results;
+                    showSuggestions.value = true;
                 } catch (e) {
-                    if (e.name === 'AbortError') {
-                        // Ignore aborts
-                        return;
-                    }
                     console.error("Search failed", e);
-                    searchResults.value = [];
                 } finally {
-                    isSearching.value = false;
-                    searchAbortController = null;
+                    loadingSearch.value = false;
                 }
-            }, 300); // Reduce debounce to 300ms for snappier feel, relying on Abort to handle load
+            }, 500); // 500ms debounce
         };
 
         const selectSuggestion = (symbol) => {
             searchQuery.value = symbol;
             showSuggestions.value = false;
-            searchResults.value = []; // Clear results to hide dropdown
             loadStock(symbol);
         };
 
@@ -189,8 +163,6 @@ const App = {
             loading.value = true;
             error.value = null;
             currentStock.value = ticker;
-
-            // Reset Data
             stockDetails.value = null;
             technicals.value = null;
             fundamentals.value = null;
@@ -201,50 +173,41 @@ const App = {
             if (seasonalChart) { seasonalChart.destroy(); seasonalChart = null; }
 
             try {
-                // STAGE 1: Critical Data (Header & Main Chart) - Fast
-                // We run price/details and chart in parallel
-                const [details, chartData] = await Promise.all([
+                const [details, tech, fund, chartData] = await Promise.all([
                     fetchAPI(`stock/${ticker}`),
+                    fetchAPI(`stock/${ticker}/technicals`),
+                    fetchAPI(`stock/${ticker}/fundamentals`),
                     fetchAPI(`stock/${ticker}/chart?range=1y`)
                 ]);
 
                 stockDetails.value = details;
+                technicals.value = tech;
+                fundamentals.value = fund;
                 stockDetails.value.chartData = chartData;
 
-                // Render UI immediately
-                loading.value = false;
-                await nextTick();
-                renderMainChart(chartData);
-
-                // STAGE 2: Heavy Analysis (Background) - Technicals, Fundamentals, Patterns
-                // We don't await this block to block the UI, but we catch errors separately
-                Promise.all([
-                    fetchAPI(`stock/${ticker}/technicals`),
-                    fetchAPI(`stock/${ticker}/fundamentals`),
+                // Fetch extra data for tabs
+                // We do it non-blocking or just wait? Let's wait to be simple
+                const [forecast, seasonal] = await Promise.all([
                     fetchAPI(`stock/${ticker}/forecast`),
                     fetchAPI(`stock/${ticker}/seasonal`)
-                ]).then(([tech, fund, forecast, seasonal]) => {
-                    technicals.value = tech;
-                    fundamentals.value = fund;
+                ]);
+                stockDetails.value.forecastData = forecast;
+                stockDetails.value.seasonalData = seasonal;
 
-                    // Attach extra data safely
-                    if (stockDetails.value) {
-                        stockDetails.value.forecastData = forecast;
-                        stockDetails.value.seasonalData = seasonal;
-                    }
-
-                    // If user switched tabs while loading, render those charts now
-                    if (activeTab.value === 'forecasting') renderForecastChart(stockDetails.value?.chartData, forecast);
-                    if (activeTab.value === 'seasonal') renderSeasonalChart(seasonal);
-
-                }).catch(err => {
-                    console.error("Background data load failed", err);
-                    // access error ref if needed, or just show partial data
-                });
+                await nextTick();
+                if (activeTab.value === 'chart') {
+                    // Small delay to ensure v-show has applied layout
+                    setTimeout(() => renderMainChart(chartData), 50);
+                } else if (activeTab.value === 'forecasting') {
+                    setTimeout(() => renderForecastChart(chartData, forecast), 50);
+                } else if (activeTab.value === 'seasonal') {
+                    setTimeout(() => renderSeasonalChart(seasonal), 50);
+                }
 
             } catch (e) {
                 console.error(e);
                 error.value = `Failed to load ${ticker}. ${e.message}`;
+            } finally {
                 loading.value = false;
             }
         };
@@ -477,7 +440,6 @@ const App = {
             searchQuery,
             searchResults,
             showSuggestions,
-            isSearching,
             onSearchInput,
             selectSuggestion,
             currentStock,
@@ -486,6 +448,7 @@ const App = {
             fundamentals,
             loading,
             error,
+            loadingSearch,
             handleSearch,
             chartContainer,
             activeTab,

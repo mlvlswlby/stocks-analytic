@@ -73,27 +73,39 @@
                 </form>
 
                 <!-- Autocomplete Dropdown -->
-                <div v-if="showSuggestions" class="suggestions-dropdown animate-fade-in"
-                    v-show="searchQuery.length > 0">
+                <div v-if="showSuggestions || loadingSearch"
+                    class="suggestions-dropdown animate-fade-in overflow-hidden">
                     <!-- Loading State -->
-                    <div v-if="isSearching" class="p-4 text-center">
-                        <i class="fa-solid fa-circle-notch fa-spin text-blue-400"></i>
+                    <div v-if="loadingSearch" class="p-4 flex items-center justify-center gap-3 text-slate-400">
+                        <i class="fa-solid fa-circle-notch fa-spin text-blue-500"></i>
+                        <span class="text-sm font-medium">Searching Global Markets...</span>
                     </div>
 
                     <!-- Results -->
                     <div v-else-if="searchResults.length > 0">
                         <div v-for="item in searchResults" :key="item.symbol" @click="selectSuggestion(item.symbol)"
-                            class="suggestion-item border-b border-slate-700/50 last:border-0 hover:bg-slate-700 transition-colors cursor-pointer p-3 flex justify-between items-center group">
-                            <span class="font-black text-white text-base group-hover:text-blue-400">{{ item.symbol
-                                }}</span>
-                            <span class="text-xs text-slate-400 font-medium truncate ml-4 max-w-[200px] text-right">{{
-                                item.name }}</span>
+                            class="suggestion-item border-b border-slate-700/50 last:border-0 hover:bg-slate-800/80 transition-all group">
+                            <!-- Left: Symbol -->
+                            <div class="flex flex-col">
+                                <span
+                                    class="font-black text-white text-base group-hover:text-blue-400 transition-colors">{{
+                                    item.symbol }}</span>
+                                <span class="text-[10px] uppercase font-bold text-slate-500">{{ item.exchange || 'EQ'
+                                    }}</span>
+                            </div>
+                            <!-- Right: Name -->
+                            <div
+                                class="text-right text-sm text-slate-400 font-medium truncate w-1/2 group-hover:text-slate-200 transition-colors">
+                                {{ item.name }}
+                            </div>
                         </div>
                     </div>
 
                     <!-- No Results -->
-                    <div v-else class="p-4 text-center text-slate-400 text-sm">
-                        <p>No results found.</p>
+                    <div v-else class="p-4 text-center text-slate-500 text-sm">
+                        <i class="fa-regular fa-folder-open text-2xl mb-2 opacity-50"></i>
+                        <p>No matches found.</p>
+                        <p class="text-xs mt-1 opacity-70">Try a different keyword.</p>
                     </div>
                 </div>
             </div>
@@ -277,6 +289,31 @@
                                 </div>
                             </div>
                         </div>
+                    </div>
+
+                    <div class="flex items-center gap-2 mt-6 mb-3">
+                        <h4 class="text-sm font-bold text-purple-300 uppercase tracking-wider">Detected Patterns</h4>
+                        <div title="Based on Daily Chart"
+                            class="cursor-help text-amber-500 text-xs border border-amber-500/50 rounded-full w-5 h-5 flex items-center justify-center font-bold">
+                            !</div>
+                    </div>
+
+                    <div class="flex flex-wrap gap-2">
+                        <template v-for="(val, name) in technicals.patterns.candle" :key="name">
+                            <span v-if="val"
+                                class="px-3 py-1 bg-purple-500/20 border border-purple-500/50 text-purple-300 rounded-full text-xs font-bold shadow-sm">
+                                {{ name }}
+                            </span>
+                        </template>
+                        <span v-for="p in technicals.patterns.chart" :key="p"
+                            class="px-3 py-1 bg-amber-500/20 border border-amber-500/50 text-amber-300 rounded-full text-xs font-bold shadow-sm">
+                            {{ p }}
+                        </span>
+                        <span
+                            v-if="Object.values(technicals.patterns.candle).every(v=>!v) && technicals.patterns.chart.length === 0"
+                            class="text-slate-500 text-sm">
+                            No significant patterns detected.
+                        </span>
                     </div>
                 </div>
             </div>

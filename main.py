@@ -8,13 +8,12 @@ import numpy as np
 import json
 import math
 import os
-import requests
 
 try:
-    from .analysis import calculate_technicals, detect_chart_patterns, generate_recommendation, calculate_forecast, calculate_seasonal
+    from .analysis import calculate_technicals, detect_candle_patterns, detect_chart_patterns, generate_recommendation, calculate_forecast, calculate_seasonal
     from .tickers import STOCKS_DB
 except ImportError:
-    from analysis import calculate_technicals, detect_chart_patterns, generate_recommendation, calculate_forecast, calculate_seasonal
+    from analysis import calculate_technicals, detect_candle_patterns, detect_chart_patterns, generate_recommendation, calculate_forecast, calculate_seasonal
     from tickers import STOCKS_DB
 
 # Utility to clean NaNs for JSON compliance
@@ -64,47 +63,45 @@ async def favicon():
     from fastapi import Response
     return Response(status_code=204)
 
-@app.get("/api/search")
+import requests
+
 @app.get("/api/search")
 def search_stocks(q: str = Query(..., min_length=1)):
     """
-    Online Autocomplete search using Yahoo Finance API.
+    Autocomplete search using Yahoo Finance API.
     """
     try:
-        # Proxy to Yahoo Finance Autocomplete
-        # Using query1 as it can be faster/less throttled sometimes
-        url = "https://query1.finance.yahoo.com/v1/finance/search"
+        url = "https://query2.finance.yahoo.com/v1/finance/search"
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
         }
         params = {
-            "q": q,
-            "quotesCount": 10,
-            "newsCount": 0,
-            "enableFuzzyQuery": "false",
-            "quotesQueryId": "tss_match_phrase_query"
+            'q': q,
+            'quotesCount': 10,
+            'newsCount': 0,
+            'enableFuzzyQuery': 'false',
+            'quotesQueryId': 'tss_match_phrase_query'
         }
         
-        # Reduced timeout to 3s for snappier experience (or fail fast)
-        resp = requests.get(url, params=params, headers=headers, timeout=3)
-        data = resp.json()
+        response = requests.get(url, headers=headers, params=params, timeout=5)
+        data = response.json()
         
         results = []
-        if "quotes" in data:
-            for quote in data["quotes"]:
-                # Only interested in Equities/ETFs primarily, but let's take all to be safe
-                if quote.get("quoteType", "") in ["EQUITY", "ETF", "MUTUALFUND", "INDEX", "FUTURE", "CURRENCY"]:
+        if 'quotes' in data:
+            for item in data['quotes']:
+                # Filter for equity/etf kind of things generally, or just return everything useful
+                if 'symbol' in item:
                     results.append({
-                        "symbol": quote.get("symbol"),
-                        "name": quote.get("longname") or quote.get("shortname") or quote.get("symbol"),
-                        "exchange": quote.get("exchange", "")
+                        "symbol": item['symbol'],
+                        "name": item.get('longname') or item.get('shortname') or item.get('name', 'N/A'),
+                        "exchange": item.get('excerpt', item.get('exchange', ''))
                     })
         
         return clean_nans({"results": results})
         
     except Exception as e:
         print(f"Search API Error: {e}")
-        # Fallback to local filtering if online fails
+        # Fallback to empty list or basic echo if API fails
         return clean_nans({"results": []})
 
 def get_stock_data(ticker: str, period="2y", interval="1d"):
@@ -118,20 +115,9 @@ def get_stock_data(ticker: str, period="2y", interval="1d"):
 
 @app.get("/api/stock/{ticker}")
 def get_stock_details(ticker: str):
-    print(f"DEBUG: Fetching details for {ticker}")
-    # Optimize: Don't fetch history if we just need info.
-    stock = yf.Ticker(ticker)
-    
-    try:
-        info = stock.info
-        print(f"DEBUG: Info fetched for {ticker}")
-    except Exception as e:
-        print(f"DEBUG: Info fetch failed for {ticker}: {e}")
-        info = {}
-        
-    # Validating symbol via info usually works, but sometimes info is empty.
-    # We can assume it exists if user searched it, or check fast_info.
-    
+    stock, df = get_stock_data(ticker, period="1d")
+    info = stock.info
+    # Try to find logo - use Clearbit API as reliable fallback if website exists
     # Try to find logo - use Clearbit API as reliable fallback
     website = info.get("website")
     logo_url = info.get("logo_url", "")
@@ -157,7 +143,7 @@ def get_stock_details(ticker: str):
         except Exception:
             logo_url = ""
         
-    print(f"DEBUG: Returning details for {ticker}")
+        
     return clean_nans({
         "symbol": ticker,
         "name": info.get("longName", ticker),
@@ -171,17 +157,16 @@ def get_stock_details(ticker: str):
 
 @app.get("/api/stock/{ticker}/technicals")
 def get_technicals(ticker: str):
-    print(f"DEBUG: Computing technicals for {ticker}")
     # Optimize: 1y is enough for SMA 200
     stock, df = get_stock_data(ticker, period="1y")
-    print(f"DEBUG: Data fetched for technicals {ticker}, len={len(df)}")
     
     # Calculate indicators
     df = calculate_technicals(df)
-    print("DEBUG: Indicators calculated")
     
+    # Get patterns & recommendation
+    candle_patterns = detect_candle_patterns(df)
+    chart_patterns = detect_chart_patterns(df)
     recommendation, score, reasons, trend_details = generate_recommendation(df)
-    print(f"DEBUG: Recommendation generated: {recommendation}")
     
     # --- Fundamental Analysis / Catalyst Injection ---
     # We fetch info again or reuse if possible. get_stock_details fetches it but we are in get_technicals.
@@ -244,6 +229,7 @@ def get_technicals(ticker: str):
             "Stochastic_D": last.get("D"),
         },
         "patterns": {
+            "candle": candle_patterns,
             "chart": chart_patterns
         }
     })
