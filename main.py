@@ -91,10 +91,23 @@ def search_stocks(q: str = Query(..., min_length=1)):
             for item in data['quotes']:
                 # Filter for equity/etf kind of things generally, or just return everything useful
                 if 'symbol' in item:
+                    # Normalize Exchange Label
+                    symbol = item['symbol']
+                    exch = item.get('exchange', '').upper()
+                    
+                    if symbol.endswith('.JK') or exch == 'JKT':
+                        display_exchange = 'IDX'
+                    elif 'NASDAQ' in exch or exch in ['NMS', 'NGM']:
+                        display_exchange = 'NSDQ'
+                    elif exch in ['NYQ', 'NYSE']:
+                        display_exchange = 'NYSE'
+                    else:
+                        display_exchange = exch or 'EQ'
+
                     results.append({
-                        "symbol": item['symbol'],
+                        "symbol": symbol,
                         "name": item.get('longname') or item.get('shortname') or item.get('name', 'N/A'),
-                        "exchange": item.get('excerpt', item.get('exchange', ''))
+                        "exchange": display_exchange
                     })
         
         return clean_nans({"results": results})
