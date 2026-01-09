@@ -10,10 +10,10 @@ import math
 import os
 
 try:
-    from .analysis import calculate_technicals, detect_chart_patterns, generate_recommendation, calculate_forecast, calculate_seasonal
+    from .analysis import calculate_technicals, detect_candle_patterns, detect_chart_patterns, generate_recommendation, calculate_forecast, calculate_seasonal
     from .tickers import STOCKS_DB
 except ImportError:
-    from analysis import calculate_technicals, detect_chart_patterns, generate_recommendation, calculate_forecast, calculate_seasonal
+    from analysis import calculate_technicals, detect_candle_patterns, detect_chart_patterns, generate_recommendation, calculate_forecast, calculate_seasonal
     from tickers import STOCKS_DB
 
 # Utility to clean NaNs for JSON compliance
@@ -164,13 +164,9 @@ def get_technicals(ticker: str):
     df = calculate_technicals(df)
     
     # Get patterns & recommendation
-    # candle_patterns = detect_candle_patterns(df) # Deprecated
-    detected_patterns = detect_chart_patterns(df)
+    candle_patterns = detect_candle_patterns(df)
+    chart_patterns = detect_chart_patterns(df)
     recommendation, score, reasons, trend_details = generate_recommendation(df)
-    
-    if detected_patterns:
-        score += 10
-        reasons.append(f"Chart Pattern: {', '.join(detected_patterns)}")
     
     # --- Fundamental Analysis / Catalyst Injection ---
     # We fetch info again or reuse if possible. get_stock_details fetches it but we are in get_technicals.
@@ -233,7 +229,8 @@ def get_technicals(ticker: str):
             "Stochastic_D": last.get("D"),
         },
         "patterns": {
-            "chart": detected_patterns
+            "candle": candle_patterns,
+            "chart": chart_patterns
         }
     })
 

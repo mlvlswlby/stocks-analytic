@@ -33,150 +33,81 @@ def calculate_technicals(df: pd.DataFrame):
     
     return df
 
-def detect_chart_patterns(df: pd.DataFrame, order=5):
+def detect_candle_patterns(df: pd.DataFrame):
     """
-    Detects chart patterns (Double Top/Bottom, Head & Shoulders) using local extrema.
-    Returns a unique list of detected pattern names.
+    Detects basic candle patterns.
     """
-    patterns = []
+    patterns = {}
     
-    if len(df) < 50:
-        return []
-
-    # Get local peaks and troughs
-    # order=5 means look for max/min in a window of 5 candles on each side
-    df['min'] = df.iloc[argrelextrema(df['Close'].values, np.less_equal, order=order)[0]]['Close']
-    df['max'] = df.iloc[argrelextrema(df['Close'].values, np.greater_equal, order=order)[0]]['Close']
+    # Get last row
+    if df.empty:
+        return {}
     
-    # Extract peaks and troughs as simple lists of (index, price)
-    peaks = df[df['max'].notna()]['max'].reset_index()
-    troughs = df[df['min'].notna()]['min'].reset_index()
+    last = df.iloc[-1]
+    prev = df.iloc[-2] if len(df) > 1 else None
     
-    if len(peaks) < 3 or len(troughs) < 3:
-        return []
-
-    # Helper to check proximity (e.g. within 3% price difference)
-    def is_close(p1, p2, threshold=0.03):
-        return abs(p1 - p2) / p1 < threshold
-
-    # --- Double Top ---
-    # Look at last 2 peaks. If they are similar height and separated by a trough.
-    last_peaks = peaks.iloc[-2:]
-    if len(last_peaks) == 2:
-        p1 = last_peaks.iloc[0]['max']
-        p2 = last_peaks.iloc[1]['max']
-        if is_close(p1, p2):
-            patterns.append("Double Top")
-
-    # --- Double Bottom ---
-    # Look at last 2 troughs.
-    last_troughs = troughs.iloc[-2:]
-    if len(last_troughs) == 2:
-        t1 = last_troughs.iloc[0]['min']
-        t2 = last_troughs.iloc[1]['min']
-        if is_close(t1, t2):
-            patterns.append("Double Bottom")
-
-    # --- Head and Shoulders ---
-    # Need 3 peaks: Middle (Head) is highest, Left & Right (Shoulders) are lower and similar.
-    # Look at last 3 peaks.
-    last_3_peaks = peaks.iloc[-3:]
-    if len(last_3_peaks) == 3:
-        l_shoulder = last_3_peaks.iloc[0]['max']
-        head = last_3_peaks.iloc[1]['max']
-        r_shoulder = last_3_peaks.iloc[2]['max']
+    # Doji
+    body_size = abs(last['Close'] - last['Open'])
+    full_size = last['High'] - last['Low']
+    is_doji = body_size <= (full_size * 0.1)
+    patterns['Doji'] = bool(is_doji)
+    
+    # Hammer (Small body, long lower shadow, little upper shadow)
+    lower_shadow = min(last['Open'], last['Close']) - last['Low']
+    upper_shadow = last['High'] - max(last['Open'], last['Close'])
+    is_hammer = (body_size <= (full_size * 0.3)) and (lower_shadow >= (2 * body_size)) and (upper_shadow <= (0.1 * body_size))
+    patterns['Hammer'] = bool(is_hammer)
+    
+    # Engulfing
+    if prev is not None:
+        is_bullish_engulfing = (prev['Close'] < prev['Open']) and (last['Close'] > last['Open']) and \
+                               (last['Open'] < prev['Close']) and (last['Close'] > prev['Open'])
+        is_bearish_engulfing = (prev['Close'] > prev['Open']) and (last['Close'] < last['Open']) and \
+                               (last['Open'] > prev['Close']) and (last['Close'] < prev['Open'])
+                               
+        patterns['Bullish Engulfing'] = bool(is_bullish_engulfing)
+        patterns['Bearish Engulfing'] = bool(is_bearish_engulfing)
         
-        if head > l_shoulder and head > r_shoulder and is_close(l_shoulder, r_shoulder, threshold=0.05):
-            patterns.append("Head & Shoulders")
+    return patterns
 
-    # --- Inverse Head and Shoulders ---
-    # Need 3 troughs: Middle is lowest.
-    last_3_troughs = troughs.iloc[-3:]
-    if len(last_3_troughs) == 3:
-        l_shoulder = last_3_troughs.iloc[0]['min']
-        head = last_3_troughs.iloc[1]['min']
-        r_shoulder = last_3_troughs.iloc[2]['min']
-        
-        if head < l_shoulder and head < r_shoulder and is_close(l_shoulder, r_shoulder, threshold=0.05):
-            patterns.append("Inverse Head & Shoulders")
-            
-    # Clean up DF (optional, but good to remove clutter if returning df)
-    df.drop(columns=['min', 'max'], inplace=True, errors='ignore')
-    
-    return list(set(patterns))
-
-def detect_chart_patterns(df: pd.DataFrame, order=5):
+def detect_chart_patterns(df: pd.DataFrame):
     """
-    Detects chart patterns (Double Top/Bottom, Head & Shoulders) using local extrema.
-    Returns a unique list of detected pattern names.
+    Experimental detection of chart patterns using local extrema.
     """
     patterns = []
     
+    # Need enough data
     if len(df) < 50:
-        return []
-
-    # Get local peaks and troughs
-    # order=5 means look for max/min in a window of 5 candles on each side
-    df['min'] = df.iloc[argrelextrema(df['Close'].values, np.less_equal, order=order)[0]]['Close']
-    df['max'] = df.iloc[argrelextrema(df['Close'].values, np.greater_equal, order=order)[0]]['Close']
-    
-    # Extract peaks and troughs as simple lists of (index, price)
-    peaks = df[df['max'].notna()]['max'].reset_index()
-    troughs = df[df['min'].notna()]['min'].reset_index()
-    
-    if len(peaks) < 3 or len(troughs) < 3:
-        return []
-
-    # Helper to check proximity (e.g. within 3% price difference)
-    def is_close(p1, p2, threshold=0.03):
-        return abs(p1 - p2) / p1 < threshold
-
-    # --- Double Top ---
-    # Look at last 2 peaks. If they are similar height and separated by a trough.
-    last_peaks = peaks.iloc[-2:]
-    if len(last_peaks) == 2:
-        p1 = last_peaks.iloc[0]['max']
-        p2 = last_peaks.iloc[1]['max']
-        if is_close(p1, p2):
-            patterns.append("Double Top")
-
-    # --- Double Bottom ---
-    # Look at last 2 troughs.
-    last_troughs = troughs.iloc[-2:]
-    if len(last_troughs) == 2:
-        t1 = last_troughs.iloc[0]['min']
-        t2 = last_troughs.iloc[1]['min']
-        if is_close(t1, t2):
-            patterns.append("Double Bottom")
-
-    # --- Head and Shoulders ---
-    # Look at last 3 peaks.
-    last_3_peaks = peaks.iloc[-3:]
-    if len(last_3_peaks) == 3:
-        l_shoulder = last_3_peaks.iloc[0]['max']
-        head = last_3_peaks.iloc[1]['max']
-        r_shoulder = last_3_peaks.iloc[2]['max']
+        return patterns
         
-        if head > l_shoulder and head > r_shoulder and is_close(l_shoulder, r_shoulder, threshold=0.05):
-            patterns.append("Head & Shoulders")
-
-    # --- Inverse Head and Shoulders ---
-    # Look at last 3 troughs.
-    last_3_troughs = troughs.iloc[-3:]
-    if len(last_3_troughs) == 3:
-        l_shoulder = last_3_troughs.iloc[0]['min']
-        head = last_3_troughs.iloc[1]['min']
-        r_shoulder = last_3_troughs.iloc[2]['min']
-        
-        if head < l_shoulder and head < r_shoulder and is_close(l_shoulder, r_shoulder, threshold=0.05):
-            patterns.append("Inverse Head & Shoulders")
+    # Find local peaks and troughs
+    n = 5 # window size
+    df['min'] = df.iloc[argrelextrema(df['Close'].values, np.less_equal, order=n)[0]]['Close']
+    df['max'] = df.iloc[argrelextrema(df['Close'].values, np.greater_equal, order=n)[0]]['Close']
+    
+    # Simple check for simple patterns like Golden Cross recently
+    if len(df) > 1:
+        last = df.iloc[-1]
+        prev = df.iloc[-2]
+        if last['SMA_50'] > last['SMA_200'] and prev['SMA_50'] <= prev['SMA_200']:
+            patterns.append("Golden Cross")
+        if last['SMA_50'] < last['SMA_200'] and prev['SMA_50'] >= prev['SMA_200']:
+            patterns.append("Death Cross")
             
-    # Clean up DF
-    df.drop(columns=['min', 'max'], inplace=True, errors='ignore')
+    # Advanced: Head and Shoulders (approximation)
+    # Looking for Peak A (Shoulder), Peak B (Head, higher), Peak C (Shoulder, lower than Head)
+    # This is complex to code reliably without visual check, we will use a simplified logic or placeholder
+    # For now, let's stick to Trend Analysis
     
-    return list(set(patterns))
+    return patterns
 
 def generate_recommendation(df: pd.DataFrame):
+    """
+    Generates a Buy/Sell/Neutral recommendation based on scores.
+    """
+    if df.empty:
+        return "NEUTRAL", 50
+def generate_recommendation(df):
     """
     Generate a Buy/Sell/Neutral recommendation based on indicators.
     Returns: (Recommendation String, Score 0-100, List of Reasons)
