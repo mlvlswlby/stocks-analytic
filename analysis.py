@@ -2,8 +2,6 @@
 import pandas as pd
 import pandas_ta as ta
 import numpy as np
-from scipy.signal import argrelextrema
-from scipy.stats import linregress
 
 def calculate_technicals(df: pd.DataFrame):
     """

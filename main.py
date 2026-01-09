@@ -180,9 +180,6 @@ def get_technicals(ticker: str):
     df = calculate_technicals(df)
     print("DEBUG: Indicators calculated")
     
-    # Get patterns & recommendation
-    chart_patterns = detect_chart_patterns(df)
-    print(f"DEBUG: Patterns detected: {chart_patterns}")
     recommendation, score, reasons, trend_details = generate_recommendation(df)
     print(f"DEBUG: Recommendation generated: {recommendation}")
     
