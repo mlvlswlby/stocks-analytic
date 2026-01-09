@@ -98,7 +98,7 @@ def search_stocks(q: str = Query(..., min_length=1)):
                     if symbol.endswith('.JK') or exch == 'JKT':
                         display_exchange = 'IDX'
                     elif 'NASDAQ' in exch or exch in ['NMS', 'NGM']:
-                        display_exchange = 'NSDQ'
+                        display_exchange = 'NDX'
                     elif exch in ['NYQ', 'NYSE']:
                         display_exchange = 'NYSE'
                     else:
