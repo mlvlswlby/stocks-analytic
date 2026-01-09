@@ -45,6 +45,34 @@
         .suggestion-item:hover {
             background: #334155;
         }
+
+        /* Ticker Animation */
+        .ticker-wrap {
+            width: 100%;
+            overflow: hidden;
+            white-space: nowrap;
+        }
+
+        .ticker {
+            display: inline-block;
+            white-space: nowrap;
+            /* Speed logic must account for width; 30s is a decent ballpark */
+            animation: scroll 30s linear infinite;
+        }
+
+        .ticker:hover {
+            animation-play-state: paused;
+        }
+
+        @keyframes scroll {
+            0% {
+                transform: translateX(100%);
+            }
+
+            100% {
+                transform: translateX(-100%);
+            }
+        }
     </style>
 </head>
 
