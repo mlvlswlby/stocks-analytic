@@ -10,10 +10,10 @@ import math
 import os
 
 try:
-    from .analysis import analyze_stock, calculate_forecast, calculate_seasonal
+    from .analysis import calculate_technicals, detect_candle_patterns, determine_market_trend, generate_recommendation, calculate_forecast, calculate_seasonal
     from .tickers import STOCKS_DB
 except ImportError:
-    from analysis import analyze_stock, calculate_forecast, calculate_seasonal
+    from analysis import calculate_technicals, detect_candle_patterns, determine_market_trend, generate_recommendation, calculate_forecast, calculate_seasonal
     from tickers import STOCKS_DB
 
 # Utility to clean NaNs for JSON compliance
@@ -230,8 +230,8 @@ def get_technicals(ticker: str):
     
     # Get patterns & recommendation
     candle_patterns = detect_candle_patterns(df)
-    chart_patterns = detect_chart_patterns(df)
-    recommendation, score, reasons, trend_details = generate_recommendation(df)
+    market_trend = determine_market_trend(df)
+    recommendation, score, reasons = generate_recommendation(df)
     
     # --- Fundamental Analysis / Catalyst Injection ---
     # We fetch info again or reuse if possible. get_stock_details fetches it but we are in get_technicals.
