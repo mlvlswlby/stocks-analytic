@@ -231,7 +231,7 @@ def get_technicals(ticker: str):
     # Get patterns & recommendation
     candle_patterns = detect_candle_patterns(df)
     market_trend = determine_market_trend(df)
-    recommendation, score, reasons = generate_recommendation(df)
+    recommendation, score, reasons, trend_details = generate_recommendation(df)
     
     # --- Fundamental Analysis / Catalyst Injection ---
     # We fetch info again or reuse if possible. get_stock_details fetches it but we are in get_technicals.
@@ -248,6 +248,32 @@ def get_technicals(ticker: str):
             elif pe > 50:
                 score -= 5
                 reasons.append(f"Fundamental: Overvalued (P/E {pe:.1f} > 50)")
+
+        # Market Cap (Small Cap vs Large Cap) - Minimal impact but useful context
+        mcap = info.get("marketCap")
+        if mcap and mcap > 100_000_000_000: # 100B
+            score += 2 # Slight bias for stability
+        
+        # Sector specific? (Placeholder)
+
+    except Exception:
+        pass # Ignore fundamental lookups if they fail
+
+    # JSON Compliant Return
+    return clean_nans({
+        "current_price": float(df.iloc[-1]['Close']),
+        "sma_50": float(df.iloc[-1]['SMA_50']),
+        "sma_200": float(df.iloc[-1]['SMA_200']),
+        "rsi": float(df.iloc[-1]['RSI']),
+        "recommendation": recommendation,
+        "score": score,
+        "reasons": reasons,
+        "trend_details": trend_details,
+        "patterns": {
+            "candle": candle_patterns,
+            "trend": market_trend
+        }
+    })
                 
         # Revenue Growth
         rev_growth = info.get("revenueGrowth")

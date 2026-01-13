@@ -105,12 +105,7 @@ def determine_market_trend(df: pd.DataFrame):
     
     return patterns
 
-def generate_recommendation(df: pd.DataFrame):
-    """
-    Generates a Buy/Sell/Neutral recommendation based on scores.
-    """
-    if df.empty:
-        return "NEUTRAL", 50
+
 def generate_recommendation(df):
     """
     Generate a Buy/Sell/Neutral recommendation based on indicators.
