@@ -295,15 +295,12 @@
                 </div>
             </div>
 
-            <!-- Content Grid (Added top margin for header) -->
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-10">
+            <!-- Content Grid (Refactored Layout) -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-10">
 
-                <!-- Left Column: Summary & Techs -->
-                <div class="lg:col-span-1 space-y-6">
-                    <!-- Profile Card -->
-
-
-                    <div class="glass-card rounded-2xl p-6 relative overflow-hidden">
+                <!-- 1. Profile Card (Top Left) -->
+                <div class="lg:col-span-1">
+                    <div class="glass-card rounded-2xl p-6 relative overflow-hidden h-full">
                         <div class="absolute top-0 right-0 p-4 opacity-10">
                             <i class="fa-solid fa-chart-pie text-9xl"></i>
                         </div>
@@ -358,9 +355,11 @@
                             </div>
                         </div>
                     </div>
+                </div>
 
-                    <!-- Technicals Summary -->
-                    <div class="glass-card rounded-2xl p-6">
+                <!-- 2. Technical Analysis (Top Right) -->
+                <div class="lg:col-span-1">
+                    <div class="glass-card rounded-2xl p-6 h-full">
                         <h3 class="text-lg font-bold mb-4 text-blue-300 border-l-4 border-blue-500 pl-3">Technical
                             Analysis
                         </h3>
@@ -451,7 +450,7 @@
                     </div>
                 </div>
 
-                <!-- Right Column: Tabs (Chart, Fundamentals, About) -->
+                <!-- 3. Right Column: Tabs (Chart, Fundamentals, About) - MOVED TO BOTTOM FULL WIDTH -->
                 <div class="lg:col-span-2 space-y-6">
 
                     <div class="glass-card rounded-2xl p-1 overflow-hidden">
