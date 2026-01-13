@@ -70,34 +70,38 @@ def detect_candle_patterns(df: pd.DataFrame):
         
     return patterns
 
-def detect_chart_patterns(df: pd.DataFrame):
+def determine_market_trend(df: pd.DataFrame):
     """
-    Experimental detection of chart patterns using local extrema.
+    Determines the market trend phase based on SMA and RSI.
     """
-    patterns = []
+    if df.empty or len(df) < 200:
+        return "Neutral"
+
+    last = df.iloc[-1]
+    price = last['Close']
+    sma50 = last['SMA_50']
+    sma200 = last['SMA_200']
+    rsi = last['RSI']
+
+    # Bullish: Strong Uptrend
+    if price > sma200 and sma50 > sma200:
+        return "Bullish"
     
-    # Need enough data
-    if len(df) < 50:
-        return patterns
-        
-    # Find local peaks and troughs
-    n = 5 # window size
-    df['min'] = df.iloc[argrelextrema(df['Close'].values, np.less_equal, order=n)[0]]['Close']
-    df['max'] = df.iloc[argrelextrema(df['Close'].values, np.greater_equal, order=n)[0]]['Close']
-    
-    # Simple check for simple patterns like Golden Cross recently
-    if len(df) > 1:
-        last = df.iloc[-1]
-        prev = df.iloc[-2]
-        if last['SMA_50'] > last['SMA_200'] and prev['SMA_50'] <= prev['SMA_200']:
-            patterns.append("Golden Cross")
-        if last['SMA_50'] < last['SMA_200'] and prev['SMA_50'] >= prev['SMA_200']:
-            patterns.append("Death Cross")
-            
-    # Advanced: Head and Shoulders (approximation)
-    # Looking for Peak A (Shoulder), Peak B (Head, higher), Peak C (Shoulder, lower than Head)
-    # This is complex to code reliably without visual check, we will use a simplified logic or placeholder
-    # For now, let's stick to Trend Analysis
+    # Bearish: Strong Downtrend
+    if price < sma200 and sma50 < sma200:
+        return "Bearish"
+
+    # Accumulation: Potential turning point from bottom
+    # Price is suppressed (below SMA200) but showing strength (RSI rising or oversold bounce) OR SMA50 crossing up
+    if price < sma200 and (rsi < 40 or (sma50 > last['SMA_20'])): 
+        return "Accumulation"
+
+    # Distribution: Potential turning point from top
+    # Price is high (above SMA200) but showing weakness (RSI overbought) OR SMA50 crossing down
+    if price > sma200 and (rsi > 70 or (sma50 < last['SMA_20'])):
+        return "Distribution"
+
+    return "Neutral"
     
     return patterns
 

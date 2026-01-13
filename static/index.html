@@ -401,30 +401,52 @@
                             </div>
                         </div>
 
-                        <div class="flex items-center gap-2 mt-6 mb-3">
-                            <h4 class="text-sm font-bold text-purple-300 uppercase tracking-wider">Detected Patterns
-                            </h4>
-                            <div title="Based on Daily Chart"
-                                class="cursor-help text-amber-500 text-xs border border-amber-500/50 rounded-full w-5 h-5 flex items-center justify-center font-bold">
-                                !</div>
-                        </div>
-
-                        <div class="flex flex-wrap gap-2">
-                            <template v-for="(val, name) in technicals.patterns.candle" :key="name">
-                                <span v-if="val"
-                                    class="px-3 py-1 bg-purple-500/20 border border-purple-500/50 text-purple-300 rounded-full text-xs font-bold shadow-sm">
-                                    {{ name }}
-                                </span>
-                            </template>
-                            <span v-for="p in technicals.patterns.chart" :key="p"
-                                class="px-3 py-1 bg-amber-500/20 border border-amber-500/50 text-amber-300 rounded-full text-xs font-bold shadow-sm">
-                                {{ p }}
-                            </span>
-                            <span
-                                v-if="Object.values(technicals.patterns.candle).every(v=>!v) && technicals.patterns.chart.length === 0"
-                                class="text-slate-500 text-sm">
-                                No significant patterns detected.
-                            </span>
+                        <!-- Market Trend Analysis -->
+                        <div class="mt-6 p-4 rounded-xl bg-slate-800/50 border border-slate-700">
+                            <h4 class="text-sm font-bold text-slate-400 uppercase tracking-wider mb-3">Market Trend
+                                Phase</h4>
+                            <div class="flex items-center gap-4">
+                                <div class="w-12 h-12 rounded-full flex items-center justify-center text-2xl shadow-lg"
+                                    :class="{
+                                        'bg-emerald-500/20 text-emerald-400 ring-2 ring-emerald-500/20': technicals.patterns.trend === 'Bullish',
+                                        'bg-rose-500/20 text-rose-400 ring-2 ring-rose-500/20': technicals.patterns.trend === 'Bearish',
+                                        'bg-cyan-500/20 text-cyan-400 ring-2 ring-cyan-500/20': technicals.patterns.trend === 'Accumulation',
+                                        'bg-orange-500/20 text-orange-400 ring-2 ring-orange-500/20': technicals.patterns.trend === 'Distribution',
+                                        'bg-slate-500/20 text-slate-400 ring-2 ring-slate-500/20': technicals.patterns.trend === 'Neutral'
+                                    }">
+                                    <i v-if="technicals.patterns.trend === 'Bullish'"
+                                        class="fa-solid fa-arrow-trend-up"></i>
+                                    <i v-else-if="technicals.patterns.trend === 'Bearish'"
+                                        class="fa-solid fa-arrow-trend-down"></i>
+                                    <i v-else-if="technicals.patterns.trend === 'Accumulation'"
+                                        class="fa-solid fa-basket-shopping"></i>
+                                    <i v-else-if="technicals.patterns.trend === 'Distribution'"
+                                        class="fa-solid fa-box-open"></i>
+                                    <i v-else class="fa-solid fa-minus"></i>
+                                </div>
+                                <div>
+                                    <div class="text-xl font-black tracking-tight" :class="{
+                                            'text-emerald-400': technicals.patterns.trend === 'Bullish',
+                                            'text-rose-400': technicals.patterns.trend === 'Bearish',
+                                            'text-cyan-400': technicals.patterns.trend === 'Accumulation',
+                                            'text-orange-400': technicals.patterns.trend === 'Distribution',
+                                            'text-slate-400': technicals.patterns.trend === 'Neutral'
+                                        }">
+                                        {{ technicals.patterns.trend }}
+                                    </div>
+                                    <p class="text-xs text-slate-500 mt-1 font-medium">
+                                        <span v-if="technicals.patterns.trend === 'Bullish'">Strong Upward
+                                            Momentum</span>
+                                        <span v-else-if="technicals.patterns.trend === 'Bearish'">Strong Downward
+                                            Pressure</span>
+                                        <span v-else-if="technicals.patterns.trend === 'Accumulation'">Potential
+                                            Bottoming / Buying Zone</span>
+                                        <span v-else-if="technicals.patterns.trend === 'Distribution'">Potential Topping
+                                            / Selling Zone</span>
+                                        <span v-else>No Clear Trend Direction</span>
+                                    </p>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
