@@ -10,10 +10,10 @@ import math
 import os
 
 try:
-    from .analysis import calculate_technicals, detect_candle_patterns, detect_chart_patterns, generate_recommendation, calculate_forecast, calculate_seasonal
+    from .analysis import analyze_stock, calculate_forecast, calculate_seasonal
     from .tickers import STOCKS_DB
 except ImportError:
-    from analysis import calculate_technicals, detect_candle_patterns, detect_chart_patterns, generate_recommendation, calculate_forecast, calculate_seasonal
+    from analysis import analyze_stock, calculate_forecast, calculate_seasonal
     from tickers import STOCKS_DB
 
 # Utility to clean NaNs for JSON compliance
