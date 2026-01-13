@@ -488,15 +488,20 @@
                                 <!-- Timeframe Controls -->
                                 <div class="flex justify-end gap-2 mb-4">
                                     <button @click="changeTimeframe('1mo')"
-                                        class="px-3 py-1 text-xs font-semibold bg-slate-800 hover:bg-blue-500/20 text-slate-300 hover:text-blue-300 rounded transition-colors">1M</button>
+                                        :class="activeTimeframe === '1mo' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30' : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white'"
+                                        class="px-3 py-1 text-xs font-bold rounded-lg transition-all duration-200">1M</button>
                                     <button @click="changeTimeframe('3mo')"
-                                        class="px-3 py-1 text-xs font-semibold bg-slate-800 hover:bg-blue-500/20 text-slate-300 hover:text-blue-300 rounded transition-colors">3M</button>
+                                        :class="activeTimeframe === '3mo' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30' : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white'"
+                                        class="px-3 py-1 text-xs font-bold rounded-lg transition-all duration-200">3M</button>
                                     <button @click="changeTimeframe('6mo')"
-                                        class="px-3 py-1 text-xs font-semibold bg-slate-800 hover:bg-blue-500/20 text-slate-300 hover:text-blue-300 rounded transition-colors">6M</button>
+                                        :class="activeTimeframe === '6mo' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30' : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white'"
+                                        class="px-3 py-1 text-xs font-bold rounded-lg transition-all duration-200">6M</button>
                                     <button @click="changeTimeframe('1y')"
-                                        class="px-3 py-1 text-xs font-semibold bg-slate-800 hover:bg-blue-500/20 text-slate-300 hover:text-blue-300 rounded transition-colors">1Y</button>
+                                        :class="activeTimeframe === '1y' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30' : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white'"
+                                        class="px-3 py-1 text-xs font-bold rounded-lg transition-all duration-200">1Y</button>
                                     <button @click="changeTimeframe('5y')"
-                                        class="px-3 py-1 text-xs font-semibold bg-slate-800 hover:bg-blue-500/20 text-slate-300 hover:text-blue-300 rounded transition-colors">5Y</button>
+                                        :class="activeTimeframe === '5y' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30' : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white'"
+                                        class="px-3 py-1 text-xs font-bold rounded-lg transition-all duration-200">5Y</button>
                                 </div>
                                 <div class="relative h-[400px] w-full">
                                     <canvas ref="mainChartCanvas"></canvas>

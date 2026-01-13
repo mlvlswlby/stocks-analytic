@@ -17,6 +17,7 @@ const App = {
         const loading = ref(false);
         const error = ref(null);
         const activeTab = ref('chart');
+        const activeTimeframe = ref('1y'); // Track active timeframe
 
         // Dashboard Lists
         const idxStocks = ref([]);
@@ -159,6 +160,7 @@ const App = {
             stockDetails.value = null;
             technicals.value = null;
             fundamentals.value = null;
+            activeTimeframe.value = '1y'; // Reset timeframe on new stock
 
             // Destroy old charts
             if (mainChart) { mainChart.destroy(); mainChart = null; }
@@ -207,6 +209,7 @@ const App = {
 
         const changeTimeframe = async (range) => {
             if (!currentStock.value) return;
+            activeTimeframe.value = range; // Update active state
             try {
                 const data = await fetchAPI(`stock/${currentStock.value}/chart?range=${range}`);
                 if (stockDetails.value) {
@@ -445,6 +448,7 @@ const App = {
             handleSearch,
             chartContainer,
             activeTab,
+            activeTimeframe,
             recommendationClass,
             formatNumber,
             formatCompactNumber,
