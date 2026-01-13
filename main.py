@@ -254,27 +254,6 @@ def get_technicals(ticker: str):
         if mcap and mcap > 100_000_000_000: # 100B
             score += 2 # Slight bias for stability
         
-        # Sector specific? (Placeholder)
-
-    except Exception:
-        pass # Ignore fundamental lookups if they fail
-
-    # JSON Compliant Return
-    return clean_nans({
-        "current_price": float(df.iloc[-1]['Close']),
-        "sma_50": float(df.iloc[-1]['SMA_50']),
-        "sma_200": float(df.iloc[-1]['SMA_200']),
-        "rsi": float(df.iloc[-1]['RSI']),
-        "recommendation": recommendation,
-        "score": score,
-        "reasons": reasons,
-        "trend_details": trend_details,
-        "patterns": {
-            "candle": candle_patterns,
-            "trend": market_trend
-        }
-    })
-                
         # Revenue Growth
         rev_growth = info.get("revenueGrowth")
         if rev_growth and rev_growth > 0.20:
@@ -287,17 +266,18 @@ def get_technicals(ticker: str):
             reasons.append(f"Fundamental: High Profit Margin ({(profit_margin*100):.1f}%)")
             
         # Analyst Target
-        current_price = info.get("currentPrice") or info.get("regularMarketPrice")
+        current_price_info = info.get("currentPrice") or info.get("regularMarketPrice")
         target_price = info.get("targetMeanPrice")
-        if current_price and target_price:
-            upside = (target_price - current_price) / current_price
+        if current_price_info and target_price:
+            upside = (target_price - current_price_info) / current_price_info
             if upside > 0.20:
                  score += 5
                  reasons.append(f"Catalyst: Analyst Upside Potential ({(upside*100):.1f}%)")
                  
     except Exception as e:
-        print(f"Fundamenal check failed: {e}")
-    
+        # Pass silently or log
+        pass
+
     # Cap score
     score = max(0, min(100, score))
 
@@ -305,6 +285,10 @@ def get_technicals(ticker: str):
     
     return clean_nans({
         "symbol": ticker,
+        "current_price": float(last['Close']),
+        "sma_50": float(last['SMA_50']),
+        "sma_200": float(last['SMA_200']),
+        "rsi": float(last['RSI']),
         "recommendation": recommendation,
         "score": score,
         "reasons": reasons,
@@ -321,7 +305,7 @@ def get_technicals(ticker: str):
         },
         "patterns": {
             "candle": candle_patterns,
-            "chart": chart_patterns
+            "trend": market_trend
         }
     })
 
