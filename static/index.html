@@ -158,30 +158,116 @@
                     </div>
                 </form>
 
-                <!-- Autocomplete Dropdown - Centered Below -->
+                <!-- AutoComplete Dropdown -->
                 <div v-if="showSuggestions || (loadingSearch && searchQuery)"
                     class="absolute top-full left-0 right-0 mt-4 bg-slate-800/90 backdrop-blur-xl border border-slate-700 rounded-2xl shadow-2xl overflow-y-auto max-h-[400px] custom-scrollbar z-50 animate-slide-up">
-                    <div v-if="loadingSearch" class="p-6 text-center text-slate-400">
-                        <i class="fa-solid fa-circle-notch fa-spin mb-2 text-2xl text-blue-500"></i>
-                        <p>Searching global markets...</p>
+                    <div v-if="loadingSearch" class="p-8 text-center text-slate-400">
+                        <i class="fas fa-circle-notch fa-spin text-2xl text-blue-500 mb-2"></i>
+                        <p class="text-xs font-medium animate-pulse">Scanning market...</p>
                     </div>
-                    <div v-else-if="searchResults.length > 0">
-                        <div v-for="item in searchResults" :key="item.symbol" @click="selectSuggestion(item.symbol)"
-                            class="p-4 border-b border-slate-700/50 last:border-0 hover:bg-white/5 cursor-pointer flex justify-between items-center group transition-colors">
-                            <div class="flex flex-col gap-1">
-                                <h4 class="font-bold text-white text-lg leading-none">{{ item.symbol }}</h4>
-                                <span
-                                    class="text-xs font-bold text-slate-400 bg-slate-700/50 px-2 py-0.5 rounded w-fit">{{
-                                    item.exchange || 'EQUITY' }}</span>
-                            </div>
-                            <div class="text-right pl-4">
-                                <p class="text-slate-300 font-medium text-sm truncate max-w-[200px]">{{ item.name }}</p>
-                            </div>
+                    <div v-else>
+                        <ul class="divide-y divide-slate-700/50">
+                            <li v-for="(result, index) in searchResults" :key="index"
+                                @click="selectSuggestion(result.symbol)"
+                                class="p-4 hover:bg-slate-700/50 cursor-pointer transition-colors group">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center gap-3">
+                                        <div
+                                            class="w-10 h-10 rounded-lg bg-slate-700 group-hover:bg-slate-600 flex items-center justify-center transition-colors">
+                                            <span class="text-sm font-bold text-slate-300 group-hover:text-white">{{
+                                                result.symbol.slice(0, 1) }}</span>
+                                        </div>
+                                        <div>
+                                            <div class="flex items-center gap-2">
+                                                <span class="font-bold text-blue-400 group-hover:text-blue-300">{{
+                                                    result.symbol }}</span>
+                                                <template v-if="result.exchange">
+                                                    <span
+                                                        class="text-xs font-bold px-1.5 py-0.5 rounded text-slate-400 bg-slate-800 border border-slate-600"
+                                                        style="font-size: 0.65rem;">
+                                                        {{ result.exchange }}
+                                                    </span>
+                                                </template>
+                                            </div>
+                                            <div
+                                                class="text-sm text-slate-400 group-hover:text-slate-300 truncate max-w-[200px]">
+                                                {{ result.name }}</div>
+                                        </div>
+                                    </div>
+                                    <i
+                                        class="fas fa-chevron-right text-slate-600 group-hover:text-white transition-colors"></i>
+                                </div>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Trade Simulator -->
+            <div class="max-w-xl mx-auto mt-6">
+                <button @click="showTradeSim = !showTradeSim"
+                    class="flex items-center justify-center w-full gap-2 text-sm font-medium text-slate-400 hover:text-white transition-colors mb-4">
+                    <i class="fas fa-calculator"></i>
+                    Analyze My Position
+                    <i :class="showTradeSim ? 'rotate-180' : ''"
+                        class="fas fa-chevron-down transition-transform duration-200"></i>
+                </button>
+
+                <div v-show="showTradeSim"
+                    class="bg-slate-800/50 backdrop-blur-md border border-slate-700 rounded-2xl p-6 animate-slide-up">
+                    <div class="grid grid-cols-2 gap-4 mb-4">
+                        <div class="col-span-2 sm:col-span-1">
+                            <label class="block text-xs font-medium text-slate-400 mb-1">Stock Ticker</label>
+                            <input v-model="tradeSimTicker" type="text" placeholder="e.g. BBCA.JK"
+                                class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-sm font-semibold uppercase">
+                        </div>
+                        <div class="col-span-2 sm:col-span-1">
+                            <label class="block text-xs font-medium text-slate-400 mb-1">Avg Price</label>
+                            <input v-model.number="tradeSimPrice" type="number" placeholder="0"
+                                class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-sm font-semibold">
                         </div>
                     </div>
-                    <div v-else class="p-8 text-center text-slate-500">
-                        <p class="text-lg font-medium text-slate-400">No matches found</p>
-                        <p class="text-sm mt-1">Try searching for a company name or ticker symbol.</p>
+                    <button @click="analyzeTrade" :disabled="loadingTradeSim || !tradeSimTicker || !tradeSimPrice"
+                        class="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-2.5 rounded-xl transition-all shadow-lg shadow-blue-500/20 mb-4">
+                        <span v-if="loadingTradeSim"><i class="fas fa-circle-notch fa-spin mr-2"></i>Analyzing...</span>
+                        <span v-else>Calculate Plan</span>
+                    </button>
+
+                    <!-- Result -->
+                    <div v-if="tradePlan" class="bg-slate-900/50 rounded-xl p-4 border border-slate-700/50">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="text-sm font-medium text-slate-400">P/L Estimation</div>
+                            <div :class="tradePlan.pl_pct >= 0 ? 'text-emerald-400' : 'text-rose-400'"
+                                class="text-lg font-black">
+                                {{ tradePlan.pl_pct >= 0 ? '+' : '' }}{{ tradePlan.pl_pct.toFixed(2) }}%
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <div class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Recommendation
+                            </div>
+                            <div class="bg-slate-800 rounded-lg p-3 border-l-4" :class="{
+                                'border-emerald-500': tradePlan.action.includes('HOLD') || tradePlan.action.includes('ADD'),
+                                'border-amber-500': tradePlan.action.includes('TRAILING'),
+                                'border-rose-500': tradePlan.action.includes('SELL') || tradePlan.action.includes('CUT')
+                            }">
+                                <div class="text-base font-black text-white mb-1">{{ tradePlan.action }}</div>
+                                <div class="text-xs text-slate-400">{{ tradePlan.reason }}</div>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3 text-sm">
+                            <div class="bg-slate-800 rounded-lg p-3">
+                                <div class="text-xs text-slate-500 mb-1">Take Profit 1</div>
+                                <div class="font-mono font-bold text-emerald-400">{{ formatNumber(tradePlan.targets.tp1)
+                                    }}</div>
+                            </div>
+                            <div class="bg-slate-800 rounded-lg p-3">
+                                <div class="text-xs text-slate-500 mb-1">Cut Loss</div>
+                                <div class="font-mono font-bold text-rose-400">{{ formatNumber(tradePlan.targets.cl) }}
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

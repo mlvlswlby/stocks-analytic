@@ -19,6 +19,13 @@ const App = {
         const activeTab = ref('chart');
         const activeTimeframe = ref('1y'); // Track active timeframe
 
+        // Trade Sim State
+        const showTradeSim = ref(false);
+        const tradeSimTicker = ref('');
+        const tradeSimPrice = ref(null);
+        const loadingTradeSim = ref(false);
+        const tradePlan = ref(null);
+
         // Dashboard Lists
         const idxStocks = ref([]);
         const usStocks = ref([]);
@@ -26,11 +33,10 @@ const App = {
         const listProgress = ref('');
 
         // Chart Info
-        // Chart Info
         let mainChart = null;
         let forecastChart = null;
         let seasonalChart = null;
-        const chartContainer = ref(null); // Keep for safety if HTML not fully updated, but primarily use:
+        const chartContainer = ref(null);
         const mainChartCanvas = ref(null);
         const forecastChartCanvas = ref(null);
         const seasonalChartCanvas = ref(null);
@@ -53,7 +59,27 @@ const App = {
             }
         };
 
+        const analyzeTrade = async () => {
+            if (!tradeSimTicker.value || !tradeSimPrice.value) return;
+
+            loadingTradeSim.value = true;
+            tradePlan.value = null;
+
+            try {
+                const ticker = tradeSimTicker.value.toUpperCase();
+                const price = tradeSimPrice.value;
+                const plan = await fetchAPI(`analyze-trade?ticker=${ticker}&avg_price=${price}`);
+                tradePlan.value = plan;
+            } catch (e) {
+                console.error("Trade Sim Error", e);
+                alert("Failed to analyze trade. Please check ticker.");
+            } finally {
+                loadingTradeSim.value = false;
+            }
+        };
+
         const onSearchInput = () => {
+            // ... (keep existing)
             if (searchDebounce.value) clearTimeout(searchDebounce.value);
             if (searchQuery.value.length < 1) {
                 searchResults.value = [];
@@ -74,6 +100,8 @@ const App = {
                 }
             }, 500); // 500ms debounce
         };
+
+
 
         const selectSuggestion = (symbol) => {
             searchQuery.value = symbol;
@@ -432,6 +460,7 @@ const App = {
             initDashboard();
         });
 
+
         return {
             searchQuery,
             searchResults,
@@ -460,7 +489,14 @@ const App = {
             getScoreColor,
             mainChartCanvas,
             forecastChartCanvas,
-            seasonalChartCanvas
+            seasonalChartCanvas,
+            // Trade Sim
+            showTradeSim,
+            tradeSimTicker,
+            tradeSimPrice,
+            loadingTradeSim,
+            tradePlan,
+            analyzeTrade
         };
     }
 };

@@ -10,10 +10,10 @@ import math
 import os
 
 try:
-    from .analysis import calculate_technicals, detect_candle_patterns, determine_market_trend, generate_recommendation, calculate_forecast, calculate_seasonal
+    from .analysis import calculate_technicals, detect_candle_patterns, determine_market_trend, generate_recommendation, calculate_forecast, calculate_seasonal, generate_trade_plan
     from .tickers import STOCKS_DB
 except ImportError:
-    from analysis import calculate_technicals, detect_candle_patterns, determine_market_trend, generate_recommendation, calculate_forecast, calculate_seasonal
+    from analysis import calculate_technicals, detect_candle_patterns, determine_market_trend, generate_recommendation, calculate_forecast, calculate_seasonal, generate_trade_plan
     from tickers import STOCKS_DB
 
 # Utility to clean NaNs for JSON compliance
@@ -383,3 +383,13 @@ def get_chart_data(ticker: str, range: str = "1y"):
         })
         
     return clean_nans(chart_data)
+
+@app.get("/api/analyze-trade")
+def analyze_trade(ticker: str, avg_price: float, start_date: str = None):
+    # Fetch ample history for analysis
+    # We use '2y' to ensure enough data for SMA200 and support/resistance
+    stock, df = get_stock_data(ticker, period="2y") 
+    df = calculate_technicals(df) # Ensure indicators are present
+    
+    plan = generate_trade_plan(df, avg_price, start_date)
+    return clean_nans(plan)

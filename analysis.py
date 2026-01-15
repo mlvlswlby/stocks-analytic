@@ -249,3 +249,80 @@ def calculate_seasonal(df: pd.DataFrame):
             seasonal_data[year] = data_points
             
     return seasonal_data
+
+def generate_trade_plan(df: pd.DataFrame, avg_price: float, buy_date: str = None):
+    """
+    Generates a trade plan (TP, CL, Action) based on average price and current technicals.
+    """
+    if df.empty:
+        return {}
+
+    last = df.iloc[-1]
+    current_price = last['Close']
+    
+    # Calculate P/L
+    pl_pct = ((current_price - avg_price) / avg_price) * 100
+    
+    # Identify market phase
+    trend = determine_market_trend(df)
+    
+    # Support & Resistance (Simple Local Extrema)
+    # Get last 6 months for Support/Resistance
+    window = df.iloc[-126:].copy()
+    
+    # Find peaks (Resistance) and troughs (Support)
+    # order=5 means local max/min over 10 days window (5 each side)
+    res_indices = argrelextrema(window['High'].values, np.greater, order=5)[0]
+    sup_indices = argrelextrema(window['Low'].values, np.less, order=5)[0]
+    
+    resistances = window['High'].iloc[res_indices].sort_values(ascending=True).values
+    supports = window['Low'].iloc[sup_indices].sort_values(ascending=True).values
+    
+    # Filter levels relevant to current price
+    # Nearest Resistance above current price
+    upper_levels = [r for r in resistances if r > current_price * 1.01] # 1% buffer
+    # Nearest Support below current price
+    lower_levels = [s for s in supports if s < current_price * 0.99] # 1% buffer
+    
+    # Define Targets
+    tp1 = upper_levels[0] if len(upper_levels) > 0 else current_price * 1.05
+    tp2 = upper_levels[1] if len(upper_levels) > 1 else (tp1 * 1.05)
+    tp3 = upper_levels[2] if len(upper_levels) > 2 else (tp2 * 1.05)
+    
+    cl = lower_levels[-1] if len(lower_levels) > 0 else current_price * 0.95
+    
+    # sanity checks
+    if tp1 <= current_price: tp1 = current_price * 1.05
+    if cl >= current_price: cl = current_price * 0.95
+    
+    # Action Logic
+    action = "HOLD"
+    reason = "Price is stable."
+    
+    if pl_pct < -7 and trend == "Bearish":
+        action = "CUT LOSS"
+        reason = "Trend is Bearish and loss exceeds 7%."
+    elif pl_pct > 20 and trend == "Bullish":
+        action = "HOLD / TRAILING STOP"
+        reason = "Strong profit, let it run but protect gains."
+    elif trend == "Bearish":
+        action = "SELL / REDUCE"
+        reason = "Market trend is Bearish."
+    elif trend == "Bullish":
+        action = "HOLD / ADD"
+        reason = "Market trend is Bullish."
+        
+    return {
+        "current_price": current_price,
+        "avg_price": avg_price,
+        "pl_pct": pl_pct,
+        "action": action,
+        "reason": reason,
+        "market_trend": trend,
+        "targets": {
+            "tp1": tp1,
+            "tp2": tp2,
+            "tp3": tp3,
+            "cl": cl
+        }
+    }
