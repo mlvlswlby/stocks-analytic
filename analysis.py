@@ -297,21 +297,46 @@ def generate_trade_plan(df: pd.DataFrame, avg_price: float, buy_date: str = None
     
     # Action Logic
     action = "HOLD"
-    reason = "Price is stable."
+    reason = "Market condition supports holding."
     
-    if pl_pct < -7 and trend == "Bearish":
-        action = "CUT LOSS"
-        reason = "Trend is Bearish and loss exceeds 7%."
-    elif pl_pct > 20 and trend == "Bullish":
-        action = "HOLD / TRAILING STOP"
-        reason = "Strong profit, let it run but protect gains."
-    elif trend == "Bearish":
-        action = "SELL / REDUCE"
-        reason = "Market trend is Bearish."
-    elif trend == "Bullish":
-        action = "HOLD / ADD"
-        reason = "Market trend is Bullish."
-        
+    # Logic Matrix
+    if pl_pct > 0:
+        # Profitable Position
+        if trend in ["Bearish", "Distribution"]:
+            action = "TAKE PROFIT"
+            reason = "Trend is weakening/bearish. Secure your gains."
+        elif trend == "Bullish":
+            action = "HOLD"
+            reason = "Trend is Bullish. Let your profit run."
+        elif trend == "Accumulation":
+            action = "HOLD"
+            reason = "Price is stabilizing. Hold specific positions."
+            
+        # High Profit Alert
+        if pl_pct > 25:
+             action += " (Partially)"
+             reason += " Consider taking partial profit at this high level."
+             
+    else:
+        # Losing Position
+        if trend == "Bearish":
+            action = "CUT LOSS"
+            reason = "Trend is Bearish. Minimize further losses."
+        elif trend == "Distribution":
+            action = "CUT LOSS"
+            reason = "Distribution phase detected (Market Top). Exit now."
+        elif trend == "Accumulation":
+            action = "AVERAGE DOWN"
+            reason = "Price is in accumulation zone. Consider buying more."
+        elif trend == "Bullish":
+            # Correction in Uptrend
+            if pl_pct > -7:
+                action = "HOLD"
+                reason = "Minor pullback in Bullish trend."
+            else:
+                action = "CUT LOSS"
+                reason = "Loss exceeds risk threshold (-7%) despite trend."
+
     return {
         "current_price": current_price,
         "avg_price": avg_price,

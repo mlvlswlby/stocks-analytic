@@ -235,6 +235,10 @@
 
                     <!-- Result -->
                     <div v-if="tradePlan" class="bg-slate-900/50 rounded-xl p-4 border border-slate-700/50">
+                        <div class="flex items-center justify-between mb-2">
+                            <div class="text-xs font-bold text-slate-500 uppercase tracking-wider">Current Price</div>
+                            <div class="text-sm font-bold text-white">{{ formatNumber(tradePlan.current_price) }}</div>
+                        </div>
                         <div class="flex items-center justify-between mb-4">
                             <div class="text-sm font-medium text-slate-400">P/L Estimation</div>
                             <div :class="tradePlan.pl_pct >= 0 ? 'text-emerald-400' : 'text-rose-400'"
@@ -247,9 +251,9 @@
                             <div class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Recommendation
                             </div>
                             <div class="bg-slate-800 rounded-lg p-3 border-l-4" :class="{
-                                'border-emerald-500': tradePlan.action.includes('HOLD') || tradePlan.action.includes('ADD'),
-                                'border-amber-500': tradePlan.action.includes('TRAILING'),
-                                'border-rose-500': tradePlan.action.includes('SELL') || tradePlan.action.includes('CUT')
+                                'border-emerald-500': tradePlan.action.includes('HOLD') || tradePlan.action.includes('AVERAGE') || tradePlan.action.includes('ADD'),
+                                'border-amber-500': tradePlan.action.includes('TAKE') || tradePlan.action.includes('TRAILING'),
+                                'border-rose-500': tradePlan.action.includes('CUT') || tradePlan.action.includes('SELL')
                             }">
                                 <div class="text-base font-black text-white mb-1">{{ tradePlan.action }}</div>
                                 <div class="text-xs text-slate-400">{{ tradePlan.reason }}</div>
@@ -258,7 +262,7 @@
 
                         <div class="grid grid-cols-2 gap-3 text-sm">
                             <div class="bg-slate-800 rounded-lg p-3">
-                                <div class="text-xs text-slate-500 mb-1">Take Profit 1</div>
+                                <div class="text-xs text-slate-500 mb-1">Take Profit</div>
                                 <div class="font-mono font-bold text-emerald-400">{{ formatNumber(tradePlan.targets.tp1)
                                     }}</div>
                             </div>
