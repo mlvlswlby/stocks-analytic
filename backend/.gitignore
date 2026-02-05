@@ -1,0 +1,15 @@
+# Folder hasil compile Python
+__pycache__/
+*.pyc
+
+# Environment Virtual
+env/
+venv/
+.env
+
+# Folder IDE
+.vscode/
+.idea/
+
+# File Log
+*.log

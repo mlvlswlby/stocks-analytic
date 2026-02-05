@@ -1,0 +1,286 @@
+[
+    {
+        "symbol": "BBCA.JK",
+        "name": "Bank Central Asia Tbk"
+    },
+    {
+        "symbol": "BBRI.JK",
+        "name": "Bank Rakyat Indonesia (Persero) Tbk"
+    },
+    {
+        "symbol": "BMRI.JK",
+        "name": "Bank Mandiri (Persero) Tbk"
+    },
+    {
+        "symbol": "BBNI.JK",
+        "name": "Bank Negara Indonesia (Persero) Tbk"
+    },
+    {
+        "symbol": "TLKM.JK",
+        "name": "Telkom Indonesia (Persero) Tbk"
+    },
+    {
+        "symbol": "ASII.JK",
+        "name": "Astra International Tbk"
+    },
+    {
+        "symbol": "UNVR.JK",
+        "name": "Unilever Indonesia Tbk"
+    },
+    {
+        "symbol": "GOTO.JK",
+        "name": "GoTo Gojek Tokopedia Tbk"
+    },
+    {
+        "symbol": "ICBP.JK",
+        "name": "Indofood CBP Sukses Makmur Tbk"
+    },
+    {
+        "symbol": "INDF.JK",
+        "name": "Indofood Sukses Makmur Tbk"
+    },
+    {
+        "symbol": "ADRO.JK",
+        "name": "Adaro Energy Indonesia Tbk"
+    },
+    {
+        "symbol": "PTBA.JK",
+        "name": "Bukit Asam Tbk"
+    },
+    {
+        "symbol": "ITMG.JK",
+        "name": "Indo Tambangraya Megah Tbk"
+    },
+    {
+        "symbol": "PGAS.JK",
+        "name": "Perusahaan Gas Negara Tbk"
+    },
+    {
+        "symbol": "ANTM.JK",
+        "name": "Aneka Tambang Tbk"
+    },
+    {
+        "symbol": "MDKA.JK",
+        "name": "Merdeka Copper Gold Tbk"
+    },
+    {
+        "symbol": "INKP.JK",
+        "name": "Indah Kiat Pulp & Paper Tbk"
+    },
+    {
+        "symbol": "TKIM.JK",
+        "name": "Pabrik Kertas Tjiwi Kimia Tbk"
+    },
+    {
+        "symbol": "KLBF.JK",
+        "name": "Kalbe Farma Tbk"
+    },
+    {
+        "symbol": "SMGR.JK",
+        "name": "Semen Indonesia (Persero) Tbk"
+    },
+    {
+        "symbol": "INTP.JK",
+        "name": "Indocement Tunggal Prakarsa Tbk"
+    },
+    {
+        "symbol": "BRPT.JK",
+        "name": "Barito Pacific Tbk"
+    },
+    {
+        "symbol": "TPIA.JK",
+        "name": "Chandra Asri Petrochemical Tbk"
+    },
+    {
+        "symbol": "AMRT.JK",
+        "name": "Sumber Alfaria Trijaya Tbk"
+    },
+    {
+        "symbol": "MIDI.JK",
+        "name": "Midi Utama Indonesia Tbk"
+    },
+    {
+        "symbol": "HMSP.JK",
+        "name": "H.M. Sampoerna Tbk"
+    },
+    {
+        "symbol": "GGRM.JK",
+        "name": "Gudang Garam Tbk"
+    },
+    {
+        "symbol": "CPIN.JK",
+        "name": "Charoen Pokphand Indonesia Tbk"
+    },
+    {
+        "symbol": "JPFA.JK",
+        "name": "Japfa Comfeed Indonesia Tbk"
+    },
+    {
+        "symbol": "TOWR.JK",
+        "name": "Sarana Menara Nusantara Tbk"
+    },
+    {
+        "symbol": "EXCL.JK",
+        "name": "XL Axiata Tbk"
+    },
+    {
+        "symbol": "ISAT.JK",
+        "name": "Indosat Tbk"
+    },
+    {
+        "symbol": "UNTR.JK",
+        "name": "United Tractors Tbk"
+    },
+    {
+        "symbol": "HEXA.JK",
+        "name": "Hexindo Adiperkasa Tbk"
+    },
+    {
+        "symbol": "AAPL",
+        "name": "Apple Inc."
+    },
+    {
+        "symbol": "MSFT",
+        "name": "Microsoft Corporation"
+    },
+    {
+        "symbol": "NVDA",
+        "name": "NVIDIA Corporation"
+    },
+    {
+        "symbol": "TSLA",
+        "name": "Tesla, Inc."
+    },
+    {
+        "symbol": "AMZN",
+        "name": "Amazon.com, Inc."
+    },
+    {
+        "symbol": "GOOGL",
+        "name": "Alphabet Inc."
+    },
+    {
+        "symbol": "META",
+        "name": "Meta Platforms, Inc."
+    },
+    {
+        "symbol": "NFLX",
+        "name": "Netflix, Inc."
+    },
+    {
+        "symbol": "AMD",
+        "name": "Advanced Micro Devices, Inc."
+    },
+    {
+        "symbol": "INTC",
+        "name": "Intel Corporation"
+    },
+    {
+        "symbol": "ORCL",
+        "name": "Oracle Corporation"
+    },
+    {
+        "symbol": "IBM",
+        "name": "International Business Machines"
+    },
+    {
+        "symbol": "CSCO",
+        "name": "Cisco Systems, Inc."
+    },
+    {
+        "symbol": "CRM",
+        "name": "Salesforce, Inc."
+    },
+    {
+        "symbol": "ADBE",
+        "name": "Adobe Inc."
+    },
+    {
+        "symbol": "QCOM",
+        "name": "Qualcomm Incorporated"
+    },
+    {
+        "symbol": "AVGO",
+        "name": "Broadcom Inc."
+    },
+    {
+        "symbol": "TXN",
+        "name": "Texas Instruments Incorporated"
+    },
+    {
+        "symbol": "PYPL",
+        "name": "PayPal Holdings, Inc."
+    },
+    {
+        "symbol": "SQ",
+        "name": "Block, Inc."
+    },
+    {
+        "symbol": "SHOP",
+        "name": "Shopify Inc."
+    },
+    {
+        "symbol": "SPOT",
+        "name": "Spotify Technology S.A."
+    },
+    {
+        "symbol": "UBER",
+        "name": "Uber Technologies, Inc."
+    },
+    {
+        "symbol": "ABNB",
+        "name": "Airbnb, Inc."
+    },
+    {
+        "symbol": "PLTR",
+        "name": "Palantir Technologies Inc."
+    },
+    {
+        "symbol": "COIN",
+        "name": "Coinbase Global, Inc."
+    },
+    {
+        "symbol": "HOOD",
+        "name": "Robinhood Markets, Inc."
+    },
+    {
+        "symbol": "RBLX",
+        "name": "Roblox Corporation"
+    },
+    {
+        "symbol": "U",
+        "name": "Unity Software Inc."
+    },
+    {
+        "symbol": "ZM",
+        "name": "Zoom Video Communications, Inc."
+    },
+    {
+        "symbol": "DOCU",
+        "name": "DocuSign, Inc."
+    },
+    {
+        "symbol": "SNOW",
+        "name": "Snowflake Inc."
+    },
+    {
+        "symbol": "DDOG",
+        "name": "Datadog, Inc."
+    },
+    {
+        "symbol": "CRWD",
+        "name": "CrowdStrike Holdings, Inc."
+    },
+    {
+        "symbol": "ZS",
+        "name": "Zscaler, Inc."
+    },
+    {
+        "symbol": "PANW",
+        "name": "Palo Alto Networks, Inc."
+    },
+    {
+        "symbol": "FTNT",
+        "name": "Fortinet, Inc."
+    }
+]
