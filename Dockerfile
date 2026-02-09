@@ -11,11 +11,11 @@ COPY backend/requirements.txt .
 # Install any needed packages specified in requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the rest of the backend directory into the container
-COPY backend/ ./backend/
+# Copy the entire project into the container
+COPY . .
 
-# Validate file structure (Debugging step to ensure files are where we expect)
-RUN ls -R /app/backend
+# Validate file structure
+RUN ls -R /app
 
 # Expose port 8000 for FastAPI
 EXPOSE 8000
