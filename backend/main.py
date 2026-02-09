@@ -53,13 +53,23 @@ app.mount("/static", StaticFiles(directory=static_dir), name="static")
 def read_root():
     return FileResponse(os.path.join(static_dir, 'index.html'))
 
+@app.get("/debug-paths")
+def debug_paths():
+    import os
+    items = []
+    if os.path.exists(static_dir):
+        items = os.listdir(static_dir)
+    return {
+        "cwd": os.getcwd(),
+        "__file__": __file__,
+        "static_dir": static_dir,
+        "exists": os.path.exists(static_dir),
+        "items": items,
+        "env_port": os.getenv("PORT")
+    }
+
 @app.get("/favicon.ico")
 async def favicon():
-    # Return 404 cleanly or a dummy file. 
-    # For now, just raising 404 is fine but user complained about log.
-    # Return empty content or 204 No Content to silence it?
-    # Or just ignore. The LOG is the issue. 
-    # Let's return a 204 No Content.
     from fastapi import Response
     return Response(status_code=204)
 
