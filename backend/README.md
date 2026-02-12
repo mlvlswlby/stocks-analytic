@@ -33,11 +33,25 @@ Deploying to Render.com (Free Web Service)
 4. Deploy: Click create. Your app will be live at https://your-app-name.onrender.com.
 
 
-**Docker Deployment**
-1. Hubungkan repositori GitHub Anda.
-2. Pilih Build Type: Docker.
-3. Set Port ke 8000.
-4. Deploy.
+**Platform Deployment Guide**
+
+**Recommended: Railway / Northflank (Docker Support)**
+Since this application uses heavy libraries (Pandas, Scipy), the most stable deployment method is via Docker container.
+
+1. **Push to GitHub**: Connect your repository.
+2. **Create New Service**: Select "GitHub Repo".
+3. **Configuration**:
+   - **Build Type**: Dockerfile (automatically detected in root).
+   - **Port**: 8000.
+   - **Variables**: No extra env vars needed for basic run.
+4. **Deploy**: The platform will build the image and start the container.
+5. **Access**: Open the provided `.railway.app` or `.northflank.app` URL.
+
+**Note on Netlify / Vercel**
+Netlify is primarily for static sites and serverless functions.
+- Default deployments will fail because they attempt to run `pip install` without starting a server process.
+- To run this app on Netlify, you would need to wrap it using `mangum` adapter for AWS Lambda and keep the package size under 50MB (which is difficult with Pandas/Scipy).
+- **Recommendation**: Use Railway or Northflank for the Backend. Use Netlify only if you separate the Frontend.
 
 
 **Project Structure**
