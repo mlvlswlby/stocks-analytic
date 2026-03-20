@@ -159,16 +159,15 @@ async def update_top_20_loop():
                     change = current["Close"] - prev["Close"]
                     pchange = (change / prev["Close"]) * 100
                     
-                    # Base score on explicitly being a BUY, plus secondary sort on close price
-                    is_buy = 1 if "BUY" in recommendation.upper() else 0
+                    # We still evaluate technicals but the ticker tape priority is now Top Gainer %
+                    # You requested top 20 gainer movement
                     
                     item = {
                         "symbol": symbol,
                         "price": float(current["Close"]),
                         "change": float(change),
                         "pchange": float(pchange),
-                        "score": score,
-                        "is_buy": is_buy
+                        "score": score
                     }
                     
                     if symbol in idx_symbols:
@@ -179,9 +178,9 @@ async def update_top_20_loop():
                     # Suppress individual stock errors to keep sweeping
                     pass
                     
-            # Sort primarily by whether it's a BUY (1 over 0), then by Close Price descending
-            all_idx.sort(key=lambda x: (x["is_buy"], x["price"]), reverse=True)
-            all_us.sort(key=lambda x: (x["is_buy"], x["price"]), reverse=True)
+            # Sort strictly by Percentage Change (Top Gainers) descending
+            all_idx.sort(key=lambda x: x["pchange"], reverse=True)
+            all_us.sort(key=lambda x: x["pchange"], reverse=True)
             
             TOP_20_CACHE["idx"] = all_idx[:20]
             TOP_20_CACHE["nasdaq"] = all_us[:20]
