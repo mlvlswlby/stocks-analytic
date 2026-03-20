@@ -61,3 +61,4 @@ Bila Anda tidak ingin menggunakan sinkronisasi Token otomatis di atas, Anda bisa
    URL Anda akan berbentuk seperti: `https://username-stocks-analytic.hf.space`
 
 Tautan inilah tempat di mana web frontend analisis saham Anda bisa diakses secara publik, dan di dalamnya semua pemanggilan data saham otomatis langsung terakses dalam 1 *server environment* yang 100% gratis!
+

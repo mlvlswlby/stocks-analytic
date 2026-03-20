@@ -138,8 +138,8 @@ async def update_top_20_loop():
             idx_symbols = [s["symbol"] for s in STOCKS_DB if s["symbol"].endswith('.JK') or s.get("exchange", "").upper() in ['JKT', 'IDX']]
             us_symbols = [s["symbol"] for s in STOCKS_DB if not s["symbol"].endswith('.JK') and s.get("exchange", "").upper() not in ['JKT', 'IDX']]
             
-            buy_idx = []
-            buy_us = []
+            all_idx = []
+            all_us = []
             
             for symbol in [s["symbol"] for s in STOCKS_DB]:
                 try:
@@ -154,32 +154,37 @@ async def update_top_20_loop():
                     df_tech = calculate_technicals(df_ticker)
                     recommendation, score, _, _ = generate_recommendation(df_tech)
                     
-                    if "BUY" in recommendation.upper():
-                        current = df_tech.iloc[-1]
-                        prev = df_tech.iloc[-2]
-                        change = current["Close"] - prev["Close"]
-                        pchange = (change / prev["Close"]) * 100
-                        item = {
-                            "symbol": symbol,
-                            "price": float(current["Close"]),
-                            "change": float(change),
-                            "pchange": float(pchange),
-                            "score": score
-                        }
-                        if symbol in idx_symbols:
-                            buy_idx.append(item)
-                        else:
-                            buy_us.append(item)
+                    current = df_tech.iloc[-1]
+                    prev = df_tech.iloc[-2]
+                    change = current["Close"] - prev["Close"]
+                    pchange = (change / prev["Close"]) * 100
+                    
+                    # Base score on explicitly being a BUY, plus secondary sort on close price
+                    is_buy = 1 if "BUY" in recommendation.upper() else 0
+                    
+                    item = {
+                        "symbol": symbol,
+                        "price": float(current["Close"]),
+                        "change": float(change),
+                        "pchange": float(pchange),
+                        "score": score,
+                        "is_buy": is_buy
+                    }
+                    
+                    if symbol in idx_symbols:
+                        all_idx.append(item)
+                    else:
+                        all_us.append(item)
                 except Exception as e:
                     # Suppress individual stock errors to keep sweeping
                     pass
                     
-            # Sort by highest Close Price
-            buy_idx.sort(key=lambda x: x["price"], reverse=True)
-            buy_us.sort(key=lambda x: x["price"], reverse=True)
+            # Sort primarily by whether it's a BUY (1 over 0), then by Close Price descending
+            all_idx.sort(key=lambda x: (x["is_buy"], x["price"]), reverse=True)
+            all_us.sort(key=lambda x: (x["is_buy"], x["price"]), reverse=True)
             
-            TOP_20_CACHE["idx"] = buy_idx[:20]
-            TOP_20_CACHE["nasdaq"] = buy_us[:20]
+            TOP_20_CACHE["idx"] = all_idx[:20]
+            TOP_20_CACHE["nasdaq"] = all_us[:20]
             print(f"Background Update Complete! IDX: {len(TOP_20_CACHE['idx'])}, US: {len(TOP_20_CACHE['nasdaq'])}")
             
         except Exception as e:
@@ -190,13 +195,13 @@ async def update_top_20_loop():
 
 @app.on_event("startup")
 async def startup_event():
-    # Initial fallback so cache isn't entirely empty during the first cycle
+    # Initial fallback so cache isn't entirely empty during the first cycle (padded to 20 to preserve ticker speed)
     TOP_20_CACHE["idx"] = [
-        {"symbol": "BBCA.JK", "price": 0.0, "change": 0.0, "pchange": 0.0, "score": 0}
-    ]
+        {"symbol": "MEMUAT..", "price": 0.0, "change": 0.0, "pchange": 0.0, "score": 0}
+    ] * 20
     TOP_20_CACHE["nasdaq"] = [
-        {"symbol": "AAPL", "price": 0.0, "change": 0.0, "pchange": 0.0, "score": 0}
-    ]
+        {"symbol": "LOADING..", "price": 0.0, "change": 0.0, "pchange": 0.0, "score": 0}
+    ] * 20
     asyncio.create_task(update_top_20_loop())
 
 @app.get("/api/market-summary")
