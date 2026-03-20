@@ -6,9 +6,7 @@ Kita akan menggunakan **Hugging Face Spaces** yang 100% gratis, memiliki RAM san
 
 ---
 
-## Tahap 1: Deploy Aplikasi 
-
-Karena kode *Frontend* saat ini sudah dideteksi secara otomatis dan di-*serve* oleh *Backend* (cek `backend/main.py`), maka Anda hanya perlu melakukan deploy ke satu tempat saja:
+## Tahap 1: Membuat Ruang Server (Space)
 
 1. Buat akun di **[huggingface.co](https://huggingface.co/join)**.
 2. Setelah login, klik foto profil Anda di kanan atas -> pilih **New Space**.
@@ -19,14 +17,47 @@ Karena kode *Frontend* saat ini sudah dideteksi secara otomatis dan di-*serve* o
    - **Space Hardware**: Free (2 vCPU - 16GB RAM).
    - **Visibility**: Public (agar aksesnya gratis).
 4. Klik **Create Space**.
-5. Di halaman server (*Space*) Anda, klik tab **Files**, lalu klik **Add file** -> **Upload files**.
-6. **Penting:** Unggah SELURUH struktur proyek ini dari komputer Anda (semua folder: `backend`, `frontend`, dan file `Dockerfile`, `requirements.txt`).
-7. Setelah menekan *Commit* pada kotak di bawah (untuk mengonfirmasi unggahan), komputer awan Hugging Face akan secara otomatis membaca `Dockerfile` Anda dan mulai men-*setup* server (Anda bisa mengklik tulisan "Building" di pojok kanan atas untuk melihat prosess *install* `pandas` dll).
-8. Setelah statusnya **Running** (bulat hijau), aplikasi web Anda dan API-nya semuanya sudah siap digunakan! 
 
-## Tahap 2: Akses Web Anda
-1. Anda bisa langsung menikmati tampilannya yang terpasang di *dashboard* Hugging Face.
-2. Jika Anda ingin membagikan Web ini sebagai sebuah situs *standalone* (terpisah dari layout Hugging Face), klik tombol opsi ("Titik tiga" di pojok kanan atas) dan pilih **Embed this Space** lalu klik kolom **Direct URL**.
+---
+
+## Tahap 2: Menghubungkan GitHub ke Hugging Face (Piliha Salah Satu Cara)
+
+Agar setiap kali Anda menge-push kode ke GitHub, aplikasi di Hugging Face otomatis diperbarui, lakukan salah satu dari cara berikut:
+
+### Cara 1: Sinkronisasi Otomatis via GitHub Actions (Dianjurkan)
+Dengan cara ini, GitHub akan bertugas menyalin kode Anda persis ke Hugging Face secara otomatis di latar belakang.
+
+1. Buka akun **Hugging Face** Anda. Pergi ke **Settings -> Access Tokens**.
+2. Buat Token baru (klik *New Token*), beri nama bebas (misal: "GithubDeploy"), lalu pilih **Role: Write**. *Copy token tersebut.*
+3. Buka repository **GitHub** Anda di web, lalu masuk ke tab **Settings -> Secrets and variables -> Actions**.
+4. Klik tombol **New repository secret**.
+   - Kolom Name isi dengan: **`HF_TOKEN`**
+   - Kolom Secret *Paste* Token dari Hugging Face tadi. Klik *Add secret*.
+5. Buka kembali editor kode komputer Anda. Buka file `.github/workflows/huggingface.yml`.
+6. Pada baris ke-20 terdapat baris:
+   `run: git push --force https://USERNAME:$HF_TOKEN@huggingface.co/spaces/USERNAME/stocks-analytic main`
+   ➜ Ubah kata `USERNAME` menjadi *username* Hugging Face Anda, dan pastikan `stocks-analytic` sesuai dengan nama *Space* Anda.
+7. Simpan (Save) file tersebut! Kini setiap kali Anda men-*commit* dan nge-*push* kode ke Github, sistem otomatis akan mengerjakannya.
+
+### Cara 2: Menyambungkan secara Manual via Terminal (Git Remote)
+Bila Anda tidak ingin menggunakan sinkronisasi Token otomatis di atas, Anda bisa mem-push langsung dari komputer Anda ke Hugging Face menggunakan terminal.
+
+1. Buka terminal proyek Anda dan ketikkan perintah berikut sekali saja untuk mendaftarkan Hugging Face:
+   ```bash
+   git remote add hf https://huggingface.co/spaces/USERNAME/stocks-analytic
+   ```
+   *(Ganti `USERNAME` dan `stocks-analytic` dengan detail Space Anda).*
+2. Mulai saat ini, setiap Anda ingin mengunggah kode, Anda wajib mengetikkan perintah deploy ke Hugging face juga:
+   - Ke Github: `git push origin main`
+   - Ke Hugging Face: `git push hf main`
+*(Anda cukup memasukkan kredensial akun HF Anda saat diminta oleh terminal).*
+
+---
+
+## Tahap 3: Akses Web Anda
+1. Anda bisa melihat proses *build* aplikasinya (saat ia menginstal library) dengan mengklik tulisan "Building" di pojok kanan atas layar dashboard Hugging Face Anda.
+2. Saat status berganti **Running** (bulat hijau), Web sudah aktif!
+3. Jika Anda ingin membagikan Web ini sebagai sebuah situs *standalone* (terpisah dari layout web Hugging Face), klik opsi ("Titik tiga" di pojok kanan atas) dan pilih **Embed this Space** lalu klik kolom **Direct URL**.
    URL Anda akan berbentuk seperti: `https://username-stocks-analytic.hf.space`
 
-Tautan inilah tempat di mana web frontend analisis saham Anda bisa diakses secara publik, dan di dalamnya semua pemanggilan data saham otomatis langsung terakses dalam 1 *server environment* yang sama!
+Tautan inilah tempat di mana web frontend analisis saham Anda bisa diakses secara publik, dan di dalamnya semua pemanggilan data saham otomatis langsung terakses dalam 1 *server environment* yang 100% gratis!

@@ -69,14 +69,15 @@
         .ticker-wrap {
             width: 100%;
             overflow: hidden;
+            display: flex;
             white-space: nowrap;
         }
 
         .ticker {
-            display: inline-block;
+            display: flex;
             white-space: nowrap;
-            /* Speed logic must account for width; 30s is a decent ballpark */
-            animation: scroll 30s linear infinite;
+            width: max-content;
+            animation: scroll 40s linear infinite;
         }
 
         .ticker:hover {
@@ -85,11 +86,10 @@
 
         @keyframes scroll {
             0% {
-                transform: translateX(100%);
+                transform: translateX(0);
             }
-
             100% {
-                transform: translateX(-100%);
+                transform: translateX(-50%);
             }
         }
     </style>

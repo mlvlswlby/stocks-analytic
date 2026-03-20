@@ -8,6 +8,7 @@ import numpy as np
 import json
 import math
 import os
+import asyncio
 
 try:
     from .analysis import calculate_technicals, detect_candle_patterns, determine_market_trend, generate_recommendation, calculate_forecast, calculate_seasonal, generate_trade_plan
@@ -128,57 +129,82 @@ def search_stocks(q: str = Query(..., min_length=1)):
         # Fallback to empty list or basic echo if API fails
         return clean_nans({"results": []})
 
+TOP_20_CACHE = {"idx": [], "nasdaq": []}
+
+async def update_top_20_loop():
+    while True:
+        try:
+            print("Background Update: Evaluating Top 20 Buy Recommendations...")
+            idx_symbols = [s["symbol"] for s in STOCKS_DB if s["symbol"].endswith('.JK') or s.get("exchange", "").upper() in ['JKT', 'IDX']]
+            us_symbols = [s["symbol"] for s in STOCKS_DB if not s["symbol"].endswith('.JK') and s.get("exchange", "").upper() not in ['JKT', 'IDX']]
+            
+            buy_idx = []
+            buy_us = []
+            
+            for symbol in [s["symbol"] for s in STOCKS_DB]:
+                try:
+                    stock = yf.Ticker(symbol)
+                    # Run synchronous network request in a separate thread so we don't block FastAPI
+                    df_ticker = await asyncio.to_thread(stock.history, period="1y")
+                    
+                    if df_ticker.empty or len(df_ticker) < 50:
+                        continue
+                        
+                    # Calculate Technicals & Recommendation
+                    df_tech = calculate_technicals(df_ticker)
+                    recommendation, score, _, _ = generate_recommendation(df_tech)
+                    
+                    if "BUY" in recommendation.upper():
+                        current = df_tech.iloc[-1]
+                        prev = df_tech.iloc[-2]
+                        change = current["Close"] - prev["Close"]
+                        pchange = (change / prev["Close"]) * 100
+                        item = {
+                            "symbol": symbol,
+                            "price": float(current["Close"]),
+                            "change": float(change),
+                            "pchange": float(pchange),
+                            "score": score
+                        }
+                        if symbol in idx_symbols:
+                            buy_idx.append(item)
+                        else:
+                            buy_us.append(item)
+                except Exception as e:
+                    # Suppress individual stock errors to keep sweeping
+                    pass
+                    
+            # Sort by highest Close Price
+            buy_idx.sort(key=lambda x: x["price"], reverse=True)
+            buy_us.sort(key=lambda x: x["price"], reverse=True)
+            
+            TOP_20_CACHE["idx"] = buy_idx[:20]
+            TOP_20_CACHE["nasdaq"] = buy_us[:20]
+            print(f"Background Update Complete! IDX: {len(TOP_20_CACHE['idx'])}, US: {len(TOP_20_CACHE['nasdaq'])}")
+            
+        except Exception as e:
+            print(f"Error in background evaluation loop: {e}")
+            
+        # Refresh every hour
+        await asyncio.sleep(3600)
+
+@app.on_event("startup")
+async def startup_event():
+    # Initial fallback so cache isn't entirely empty during the first cycle
+    TOP_20_CACHE["idx"] = [
+        {"symbol": "BBCA.JK", "price": 0.0, "change": 0.0, "pchange": 0.0, "score": 0}
+    ]
+    TOP_20_CACHE["nasdaq"] = [
+        {"symbol": "AAPL", "price": 0.0, "change": 0.0, "pchange": 0.0, "score": 0}
+    ]
+    asyncio.create_task(update_top_20_loop())
+
 @app.get("/api/market-summary")
 def get_market_summary():
     """
-    Get real-time data for Top 10 IDX and Nasdaq stocks for ticker tapes.
+    Get cached dynamically evaluated Top 20 Buy recommendations.
     """
-    # Fixed Top Market Cap Lists
-    idx_tickers = ['BBCA.JK', 'BBRI.JK', 'BMRI.JK', 'BBNI.JK', 'TLKM.JK', 'ASII.JK', 'UNVR.JK', 'ICBP.JK', 'GOTO.JK', 'ADRO.JK']
-    nasdaq_tickers = ['NVDA', 'AAPL', 'MSFT', 'AMZN', 'GOOGL', 'META', 'TSLA', 'AMD', 'NFLX', 'INTC']
-    
-    try:
-        all_tickers = idx_tickers + nasdaq_tickers
-        # Download last 5 days to ensure we have previous close (handling weekends)
-        df = yf.download(all_tickers, period="5d", progress=False)
-        
-        # yfinance returns MultiIndex columns: (Price, Ticker)
-        # We want 'Close'
-        close_df = df['Close']
-        
-        batch_results = {"idx": [], "nasdaq": []}
-        
-        for t in all_tickers:
-            try:
-                if t not in close_df:
-                    continue
-                    
-                series = close_df[t].dropna()
-                if len(series) >= 2:
-                    current = series.iloc[-1]
-                    prev = series.iloc[-2]
-                    change = current - prev
-                    pchange = (change / prev) * 100
-                    
-                    item = {
-                        "symbol": t,
-                        "price": float(current), # Ensure explicit float for JSON
-                        "change": float(change),
-                        "pchange": float(pchange)
-                    }
-                    
-                    if t in idx_tickers:
-                        batch_results["idx"].append(item)
-                    else:
-                        batch_results["nasdaq"].append(item)
-            except Exception:
-                continue
-                
-        return clean_nans(batch_results)
-
-    except Exception as e:
-        print(f"Market Summary Error: {e}")
-        return {"idx": [], "nasdaq": []}
+    return clean_nans(TOP_20_CACHE)
 
 def get_stock_data(ticker: str, period="2y", interval="1d"):
     stock = yf.Ticker(ticker)
