@@ -8,4 +8,4 @@ from mangum import Mangum
 from backend.main import app
 
 # Mangum is an adapter for running ASGI applications in AWS Lambda (Netlify Functions)
-handler = Mangum(app)
+handler = Mangum(app, api_gateway_base_path="/.netlify/functions")
