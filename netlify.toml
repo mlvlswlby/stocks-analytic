@@ -1,0 +1,19 @@
+[build]
+  publish = "frontend"
+  command = "pip install -r requirements.txt -t functions"
+
+[functions]
+  directory = "functions"
+  node_bundler = "esbuild"
+  included_files = ["backend/**", "backend/data/**"]
+
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/api/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

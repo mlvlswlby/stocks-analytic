@@ -41,13 +41,18 @@ const App = {
         const forecastChartCanvas = ref(null);
         const seasonalChartCanvas = ref(null);
 
+        // Konfigurasi API Base URL
+        // Karena Backend & Frontend di-deploy bersamaan di Netlify, kita biarkan kosong "".
+        const API_BASE_URL = "";
+
         // API Helper
         const fetchAPI = async (endpoint) => {
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 20000); // 20s timeout
 
             try {
-                const res = await fetch(`/api/${endpoint}`, { signal: controller.signal });
+                const url = API_BASE_URL ? `${API_BASE_URL}/api/${endpoint}` : `/api/${endpoint}`;
+                const res = await fetch(url, { signal: controller.signal });
                 clearTimeout(timeoutId);
                 if (!res.ok) {
                     throw new Error(res.statusText);

@@ -37,21 +37,22 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Determine path to static files
+# Determine path to static files (frontend folder)
 current_dir = os.path.dirname(os.path.abspath(__file__))
-static_dir = os.path.join(current_dir, "static")
+static_dir = os.path.join(current_dir, "../frontend")
 
-# Check if static dir exists there, if not try 'backend/static' (local run from root)
 if not os.path.exists(static_dir):
-    static_dir = os.path.join(current_dir, "../backend/static")
-    if not os.path.exists(static_dir):
-        static_dir = "backend/static"
+    static_dir = "frontend"
 
-app.mount("/static", StaticFiles(directory=static_dir), name="static")
+if os.path.exists(static_dir):
+    app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
 @app.get("/")
 def read_root():
-    return FileResponse(os.path.join(static_dir, 'index.html'))
+    index_path = os.path.join(static_dir, "index.html")
+    if os.path.exists(index_path):
+        return FileResponse(index_path)
+    return {"message": "Frontend not found. API is running."}
 
 @app.get("/debug-paths")
 def debug_paths():
