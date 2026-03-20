@@ -1,30 +1,32 @@
-# Panduan Deployment (Full di Netlify)
+# Panduan Deployment All-in-One (Platform Gratis: Hugging Face Spaces)
 
-Sesuai permintaan Anda, aplikasi ini telah dikonfigurasi ulang agar **Frontend dan Backend dapat di-deploy sekaligus dalam satu tempat** di Netlify, memanfaatkan fitur *Netlify Serverless Functions*. Adapter yang digunakan untuk menghubungkan FastAPI dengan server API Netlify adalah `Mangum`.
+Sesuai permintaan Anda, saya telah mengkofigurasi ulang agar **seluruh aplikasi Anda (Backend FastAPI & Tampilan Frontend/Web)** bisa dijalankan sekaligus dalam **1 platform**. 
 
-> **PERINGATAN BATASAN NETLIFY** ⚠️  
-> Netlify memiliki batasan ketat untuk *Serverless Functions* di akun gratis, yaitu **ukuran file kompresi maksimal 50MB** dan **timeout eksekusi 10 detik**.  
-> Berhubung aplikasi analisis saham Anda menggunakan pustaka komputasi berat (`pandas`, `numpy`, `scipy`) dan sistem unduh riwayat saham (`yfinance`), ukuran total fungsinya bisa melampaui batasan ini dan *timeout* saat mengambil data saham hingga 5 tahun ke belakang. Jika proses *deploy* gagal atau *API error timeout* ketika Anda mengakses website, hal tersebut murni karena limitasi *free tier* Netlify. Maka disarankan kembali ke arsitektur sebelumnya (Backend di platform Render/Railway/VPS).
+Kita akan menggunakan **Hugging Face Spaces** yang 100% gratis, memiliki RAM sangat besar (16GB), tanpa batasan hari/jam tertentu, dan dirancang khusus untuk mengakomodasi aplikasi berbasis Python yang berat (seperti `yfinance` & `pandas`). Sistem akan berjalan menggunakan kerangka kerja `Docker`.
 
 ---
 
-## Tahap 1: Deploy ke Netlify
+## Tahap 1: Deploy Aplikasi 
 
-1. Commit dan Push seluruh perubahan baru ini ke akun **GitHub** Anda. Pastikan folder `functions/` masuk.
-2. Buka [Netlify.com](https://netlify.com) dan login dengan akun GitHub Anda.
-3. Klik menu **Add new site** > **Import an existing project**.
-4. Pilih provider **GitHub** dan berikan izin jika diminta.
-5. Pilih repository `stocks-analytic` milik Anda.
-6. Pada halaman *Site settings*, biarkan semuanya *default* karena file `netlify.toml` di dalam repository sudah mengatur semuanya secara otomatis:
-   - **Base directory**: (kosongkan)
-   - **Build command**: `pip install -r requirements.txt -t functions`
-   - **Publish directory**: `frontend`
-   - **Functions directory**: `functions`
-7. Klik **Deploy site**.
+Karena kode *Frontend* saat ini sudah dideteksi secara otomatis dan di-*serve* oleh *Backend* (cek `backend/main.py`), maka Anda hanya perlu melakukan deploy ke satu tempat saja:
 
-## Tahap 2: Menunggu Siklus Build (Kompilasi)
+1. Buat akun di **[huggingface.co](https://huggingface.co/join)**.
+2. Setelah login, klik foto profil Anda di kanan atas -> pilih **New Space**.
+3. Isi detail formulir pembuatan ruang server:
+   - **Space name**: `stocks-analytic`
+   - **License**: `mit` (atau bebas)
+   - **Select the Space SDK**: Pilih **Docker** -> **Blank**.
+   - **Space Hardware**: Free (2 vCPU - 16GB RAM).
+   - **Visibility**: Public (agar aksesnya gratis).
+4. Klik **Create Space**.
+5. Di halaman server (*Space*) Anda, klik tab **Files**, lalu klik **Add file** -> **Upload files**.
+6. **Penting:** Unggah SELURUH struktur proyek ini dari komputer Anda (semua folder: `backend`, `frontend`, dan file `Dockerfile`, `requirements.txt`).
+7. Setelah menekan *Commit* pada kotak di bawah (untuk mengonfirmasi unggahan), komputer awan Hugging Face akan secara otomatis membaca `Dockerfile` Anda dan mulai men-*setup* server (Anda bisa mengklik tulisan "Building" di pojok kanan atas untuk melihat prosess *install* `pandas` dll).
+8. Setelah statusnya **Running** (bulat hijau), aplikasi web Anda dan API-nya semuanya sudah siap digunakan! 
 
-1. Proses kompilasi akan otomatis berjalan. Netlify akan mulai mengunduh semua pustaka dari `requirements.txt` ke dalam folder functions.
-2. Tunggu proses kompilasi selesai (mungkin memakan waktu sekitar 2-3 menit untuk mengemas `pandas`).
-3. Netlify akan memberikan URL aplikasinya jika sudah selesai (contoh: `https://my-stock-analyzer.netlify.app`).
-4. **Selesai!** Jika serverless function mulus dan tidak terpotong batasan *size limit*, aplikasi penuh (Tampilan + API Data Saham) akan dapat diakses dari satu URL saja. Selamat mencoba!
+## Tahap 2: Akses Web Anda
+1. Anda bisa langsung menikmati tampilannya yang terpasang di *dashboard* Hugging Face.
+2. Jika Anda ingin membagikan Web ini sebagai sebuah situs *standalone* (terpisah dari layout Hugging Face), klik tombol opsi ("Titik tiga" di pojok kanan atas) dan pilih **Embed this Space** lalu klik kolom **Direct URL**.
+   URL Anda akan berbentuk seperti: `https://username-stocks-analytic.hf.space`
+
+Tautan inilah tempat di mana web frontend analisis saham Anda bisa diakses secara publik, dan di dalamnya semua pemanggilan data saham otomatis langsung terakses dalam 1 *server environment* yang sama!

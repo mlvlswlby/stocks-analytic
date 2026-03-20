@@ -42,7 +42,7 @@ const App = {
         const seasonalChartCanvas = ref(null);
 
         // Konfigurasi API Base URL
-        // Karena Backend & Frontend di-deploy bersamaan di Netlify, kita biarkan kosong "".
+        // Karena Backend & Frontend di-deploy menyatu di Hugging Face, biarkan kosong "".
         const API_BASE_URL = "";
 
         // API Helper

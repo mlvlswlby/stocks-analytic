@@ -5,8 +5,7 @@ FROM python:3.10-slim
 WORKDIR /app
 
 # Copy the requirements file into the container
-# Copy the requirements file into the container
-COPY backend/requirements.txt .
+COPY requirements.txt .
 
 # Install any needed packages specified in requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
@@ -17,13 +16,13 @@ COPY . .
 # Validate file structure
 RUN ls -R /app
 
-# Expose port 8000 for FastAPI
-EXPOSE 8000
+# Expose port 7860 for FastAPI (Default for Hugging Face Spaces)
+EXPOSE 7860
 
 # Define environment variable
 ENV MODULE_NAME="backend.main"
 ENV VARIABLE_NAME="app"
-ENV PORT="8000"
+ENV PORT="7860"
 
 # Run app.py when the container launches
 CMD ["sh", "-c", "uvicorn backend.main:app --host 0.0.0.0 --port ${PORT}"]
