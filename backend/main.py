@@ -182,8 +182,15 @@ async def update_top_20_loop():
             all_idx.sort(key=lambda x: x["pchange"], reverse=True)
             all_us.sort(key=lambda x: x["pchange"], reverse=True)
             
-            TOP_20_CACHE["idx"] = all_idx[:20]
-            TOP_20_CACHE["nasdaq"] = all_us[:20]
+            def get_top_gainers_losers(data):
+                if len(data) <= 20:
+                    return data
+                gainers = data[:10] # Top 10 gainers (highest positive)
+                losers = sorted(data[-10:], key=lambda x: x["pchange"]) # Top 10 losers (lowest negative)
+                return gainers + losers
+            
+            TOP_20_CACHE["idx"] = get_top_gainers_losers(all_idx)
+            TOP_20_CACHE["nasdaq"] = get_top_gainers_losers(all_us)
             print(f"Background Update Complete! IDX: {len(TOP_20_CACHE['idx'])}, US: {len(TOP_20_CACHE['nasdaq'])}")
             
         except Exception as e:
