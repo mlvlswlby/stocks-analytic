@@ -288,11 +288,25 @@ def generate_trade_plan(df: pd.DataFrame, avg_price: float, buy_date: str = None
     tp_list = list(upper_levels[:5])  # Cap at max 5 historical resistances above purchase price
     
     if not tp_list:
-        # If no historical ceilings above purchase price, project calculated targets based on average price
-        tp_list = [avg_price * 1.05, avg_price * 1.10, avg_price * 1.15]
-        if trend == "Bullish":
-            # Give more extrapolated targets if trend is strongly bullish
-            tp_list.extend([avg_price * 1.20, avg_price * 1.25])
+        # If no historical ceilings above purchase price, calculate Fibonacci Extensions
+        recent_high = window['High'].max()
+        recent_low = window['Low'].min()
+        diff = recent_high - recent_low
+        
+        # Prevent zero-variance failure
+        if diff <= 0:
+            diff = avg_price * 0.10
+            
+        # Standard Fibonacci Extension cluster multiples
+        fib_multiples = [1.618, 2.618, 3.618, 4.236, 5.236, 6.236, 7.236]
+        fib_levels = [recent_low + (diff * m) for m in fib_multiples]
+        
+        # Filter Fib levels that are strictly higher than avg_price
+        tp_list = [f for f in fib_levels if f > avg_price * 1.01][:5]
+        
+        if not tp_list:
+            # Mathematical safety net
+            tp_list = [avg_price * 1.05, avg_price * 1.10, avg_price * 1.15]
             
     # For Cut Loss, take the nearest local support below the purchase price
     cl = lower_levels[-1] if len(lower_levels) > 0 else avg_price * 0.95
