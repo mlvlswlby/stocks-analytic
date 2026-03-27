@@ -285,14 +285,16 @@ def generate_trade_plan(df: pd.DataFrame, avg_price: float, buy_date: str = None
     lower_levels = [s for s in supports if s < current_price * 0.99] # 1% buffer
     
     # Define Targets
-    tp1 = upper_levels[0] if len(upper_levels) > 0 else current_price * 1.05
-    tp2 = upper_levels[1] if len(upper_levels) > 1 else (tp1 * 1.05)
-    tp3 = upper_levels[2] if len(upper_levels) > 2 else (tp2 * 1.05)
+    tp_list = list(upper_levels[:5])  # Cap at max 5 historical resistances
     
+    if not tp_list:
+        # If no historical ceilings (All-Time-High scenario), project calculated targets
+        tp_list = [current_price * 1.05, current_price * 1.10, current_price * 1.15]
+        if trend == "Bullish":
+            # Give more extrapolated targets if trend is strongly bullish
+            tp_list.extend([current_price * 1.20, current_price * 1.25])
+            
     cl = lower_levels[-1] if len(lower_levels) > 0 else current_price * 0.95
-    
-    # sanity checks
-    if tp1 <= current_price: tp1 = current_price * 1.05
     if cl >= current_price: cl = current_price * 0.95
     
     # Action Logic
@@ -345,9 +347,7 @@ def generate_trade_plan(df: pd.DataFrame, avg_price: float, buy_date: str = None
         "reason": reason,
         "market_trend": trend,
         "targets": {
-            "tp1": tp1,
-            "tp2": tp2,
-            "tp3": tp3,
+            "tp_list": tp_list,
             "cl": cl
         }
     }

@@ -260,16 +260,19 @@
                             </div>
                         </div>
 
-                        <div class="grid grid-cols-2 gap-3 text-sm">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                             <div class="bg-slate-800 rounded-lg p-3">
-                                <div class="text-xs text-slate-500 mb-1">Take Profit</div>
-                                <div class="font-mono font-bold text-emerald-400">{{ formatNumber(tradePlan.targets.tp1)
-                                    }}</div>
+                                <div class="text-xs text-slate-500 mb-2">Take Profit Targets</div>
+                                <div class="space-y-1.5 break-inside-avoid">
+                                    <div v-for="(tp, idx) in tradePlan.targets.tp_list" :key="idx" class="flex justify-between items-center bg-slate-900 px-2.5 py-1.5 rounded border border-slate-700/50">
+                                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">TP {{ idx + 1 }}</span>
+                                        <span class="font-mono font-bold text-emerald-400">{{ formatNumber(tp) }}</span>
+                                    </div>
+                                </div>
                             </div>
                             <div class="bg-slate-800 rounded-lg p-3">
-                                <div class="text-xs text-slate-500 mb-1">Cut Loss</div>
-                                <div class="font-mono font-bold text-rose-400">{{ formatNumber(tradePlan.targets.cl) }}
-                                </div>
+                                <div class="text-xs text-slate-500 mb-1">Cut Loss Limit</div>
+                                <div class="font-mono font-bold text-rose-400">{{ formatNumber(tradePlan.targets.cl) }}</div>
                             </div>
                         </div>
                     </div>
