@@ -278,24 +278,25 @@ def generate_trade_plan(df: pd.DataFrame, avg_price: float, buy_date: str = None
     resistances = window['High'].iloc[res_indices].sort_values(ascending=True).values
     supports = window['Low'].iloc[sup_indices].sort_values(ascending=True).values
     
-    # Filter levels relevant to current price
-    # Nearest Resistance above current price
-    upper_levels = [r for r in resistances if r > current_price * 1.01] # 1% buffer
-    # Nearest Support below current price
-    lower_levels = [s for s in supports if s < current_price * 0.99] # 1% buffer
+    # Filter levels relevant to the input Average Price
+    # Nearest Resistance ABOVE the average price (so it's actually a profit)
+    upper_levels = [r for r in resistances if r > avg_price * 1.01] # 1% buffer over avg_price
+    # Nearest Support BELOW the average price
+    lower_levels = [s for s in supports if s < avg_price * 0.99] # 1% buffer under avg_price
     
     # Define Targets
-    tp_list = list(upper_levels[:5])  # Cap at max 5 historical resistances
+    tp_list = list(upper_levels[:5])  # Cap at max 5 historical resistances above purchase price
     
     if not tp_list:
-        # If no historical ceilings (All-Time-High scenario), project calculated targets
-        tp_list = [current_price * 1.05, current_price * 1.10, current_price * 1.15]
+        # If no historical ceilings above purchase price, project calculated targets based on average price
+        tp_list = [avg_price * 1.05, avg_price * 1.10, avg_price * 1.15]
         if trend == "Bullish":
             # Give more extrapolated targets if trend is strongly bullish
-            tp_list.extend([current_price * 1.20, current_price * 1.25])
+            tp_list.extend([avg_price * 1.20, avg_price * 1.25])
             
-    cl = lower_levels[-1] if len(lower_levels) > 0 else current_price * 0.95
-    if cl >= current_price: cl = current_price * 0.95
+    # For Cut Loss, take the nearest local support below the purchase price
+    cl = lower_levels[-1] if len(lower_levels) > 0 else avg_price * 0.95
+    if cl >= avg_price: cl = avg_price * 0.95
     
     # Action Logic
     action = "HOLD"
