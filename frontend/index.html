@@ -612,7 +612,13 @@
                                     <i class="fa-solid fa-circle-notch fa-spin text-4xl text-blue-500 mb-4"></i>
                                     <p class="font-medium">Analyzing optimal setup points...</p>
                                 </div>
-                                <div v-else-if="entryPlan" class="max-w-2xl mx-auto space-y-6 mt-4">
+                                <div v-else-if="entryPlan && entryPlan.error" class="max-w-2xl mx-auto space-y-6 mt-4">
+                                    <div class="bg-rose-500/10 border border-rose-500/20 text-rose-400 p-4 rounded-xl">
+                                        <p class="font-bold mb-2">Backend Error:</p>
+                                        <pre class="text-xs overflow-auto whitespace-pre-wrap">{{ entryPlan.traceback }}</pre>
+                                    </div>
+                                </div>
+                                <div v-else-if="entryPlan && !entryPlan.error" class="max-w-2xl mx-auto space-y-6 mt-4">
                                     <!-- Status Banner -->
                                     <div :class="`border-${entryPlan.color}-500/50 bg-${entryPlan.color}-500/10 text-${entryPlan.color}-400`" class="border-l-4 rounded-xl p-6 shadow-sm">
                                         <div class="flex items-start gap-4">

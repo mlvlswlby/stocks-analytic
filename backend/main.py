@@ -444,8 +444,12 @@ def analyze_trade(ticker: str, avg_price: float, start_date: str = None):
 
 @app.get("/api/stock/{ticker}/entry-plan")
 def get_entry_plan(ticker: str):
-    stock, df = get_stock_data(ticker, period="2y") 
-    df = calculate_technicals(df) 
-    
-    plan = generate_entry_plan(df)
-    return clean_nans(plan)
+    try:
+        stock, df = get_stock_data(ticker, period="2y") 
+        df = calculate_technicals(df) 
+        
+        plan = generate_entry_plan(df)
+        return clean_nans(plan)
+    except Exception as e:
+        import traceback
+        return {"error": str(e), "traceback": traceback.format_exc()}
