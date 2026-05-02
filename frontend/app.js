@@ -223,7 +223,7 @@ const App = {
                 const [forecast, seasonal, entry] = await Promise.all([
                     fetchAPI(`stock/${ticker}/forecast`).catch(() => null),
                     fetchAPI(`stock/${ticker}/seasonal`).catch(() => null),
-                    fetchAPI(`stock/${ticker}/entry-plan`).catch(() => null)
+                    fetchAPI(`stock/${ticker}/entry-plan`).catch((e) => ({ error: true, traceback: e.toString(), from_fetch: true }))
                 ]);
                 stockDetails.value.forecastData = forecast;
                 stockDetails.value.seasonalData = seasonal;

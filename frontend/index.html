@@ -614,8 +614,9 @@
                                 </div>
                                 <div v-else-if="entryPlan && entryPlan.error" class="max-w-2xl mx-auto space-y-6 mt-4">
                                     <div class="bg-rose-500/10 border border-rose-500/20 text-rose-400 p-4 rounded-xl">
-                                        <p class="font-bold mb-2">Backend Error:</p>
+                                        <p class="font-bold mb-2">Error Detail:</p>
                                         <pre class="text-xs overflow-auto whitespace-pre-wrap">{{ entryPlan.traceback }}</pre>
+                                        <p v-if="entryPlan.from_fetch" class="mt-2 text-xs opacity-70">Note: This error originated from the network or frontend fetch timeout.</p>
                                     </div>
                                 </div>
                                 <div v-else-if="entryPlan && !entryPlan.error" class="max-w-2xl mx-auto space-y-6 mt-4">
