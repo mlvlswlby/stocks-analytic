@@ -229,9 +229,14 @@ def get_stock_data(ticker: str, period="2y", interval="1d"):
 @app.get("/api/stock/{ticker}")
 def get_stock_details(ticker: str):
     stock, df = get_stock_data(ticker, period="1d")
-    info = stock.info
+    
+    try:
+        info = stock.info
+    except Exception as e:
+        print(f"yfinance info error: {e}")
+        info = {}
+        
     # Try to find logo - use Clearbit API as reliable fallback if website exists
-    # Try to find logo - use Clearbit API as reliable fallback
     website = info.get("website")
     logo_url = info.get("logo_url", "")
     
@@ -360,7 +365,12 @@ def get_technicals(ticker: str):
 @app.get("/api/stock/{ticker}/fundamentals")
 def get_fundamentals(ticker: str):
     stock, _ = get_stock_data(ticker)
-    info = stock.info
+    
+    try:
+        info = stock.info
+    except Exception as e:
+        print(f"yfinance info error: {e}")
+        info = {}
     
     # Financials (Quarterly)
     financials_data = []
