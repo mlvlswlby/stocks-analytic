@@ -218,17 +218,24 @@ const App = {
                 fundamentals.value = fund;
                 stockDetails.value.chartData = chartData;
 
-                // Fetch extra data for tabs
+                // Fetch extra data for tabs asynchronously (non-blocking)
                 loadingEntryPlan.value = true;
-                const [forecast, seasonal, entry] = await Promise.all([
+                Promise.all([
                     fetchAPI(`stock/${ticker}/forecast`).catch(() => null),
                     fetchAPI(`stock/${ticker}/seasonal`).catch(() => null),
                     fetchAPI(`stock/${ticker}/entry-plan`).catch((e) => ({ error: true, traceback: e.toString(), from_fetch: true }))
-                ]);
-                stockDetails.value.forecastData = forecast;
-                stockDetails.value.seasonalData = seasonal;
-                entryPlan.value = entry;
-                loadingEntryPlan.value = false;
+                ]).then(([forecast, seasonal, entry]) => {
+                    if (stockDetails.value && stockDetails.value.symbol === ticker) {
+                        stockDetails.value.forecastData = forecast;
+                        stockDetails.value.seasonalData = seasonal;
+                        entryPlan.value = entry;
+                        loadingEntryPlan.value = false;
+                        
+                        // If they are already on the tab, render immediately
+                        if (activeTab.value === 'forecasting') setTimeout(() => renderForecastChart(chartData, forecast), 50);
+                        if (activeTab.value === 'seasonal') setTimeout(() => renderSeasonalChart(seasonal), 50);
+                    }
+                });
 
                 await nextTick();
                 if (activeTab.value === 'chart') {
