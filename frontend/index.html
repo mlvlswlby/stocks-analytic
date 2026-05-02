@@ -553,6 +553,11 @@
                                 class="flex-1 py-4 px-4 font-bold transition-all hover:bg-slate-700/30 whitespace-nowrap">
                                 <i class="fa-solid fa-chart-line mr-2"></i> Chart
                             </button>
+                            <button @click="activeTab = 'trading_plan'"
+                                :class="{'bg-slate-700/50 text-blue-400 border-b-2 border-blue-400': activeTab === 'trading_plan'}"
+                                class="flex-1 py-4 px-4 font-bold transition-all hover:bg-slate-700/30 whitespace-nowrap">
+                                <i class="fa-solid fa-bullseye mr-2"></i> Trading Plan
+                            </button>
                             <button @click="activeTab = 'forecasting'"
                                 :class="{'bg-slate-700/50 text-blue-400 border-b-2 border-blue-400': activeTab === 'forecasting'}"
                                 class="flex-1 py-4 px-4 font-bold transition-all hover:bg-slate-700/30 whitespace-nowrap">
@@ -598,6 +603,63 @@
                                 </div>
                                 <div class="relative h-[400px] w-full">
                                     <canvas ref="mainChartCanvas"></canvas>
+                                </div>
+                            </div>
+
+                            <!-- Trading Plan Tab -->
+                            <div v-show="activeTab === 'trading_plan'" class="animate-fade-in h-full">
+                                <div v-if="loadingEntryPlan" class="text-center text-slate-400 py-20">
+                                    <i class="fa-solid fa-circle-notch fa-spin text-4xl text-blue-500 mb-4"></i>
+                                    <p class="font-medium">Analyzing optimal setup points...</p>
+                                </div>
+                                <div v-else-if="entryPlan" class="max-w-2xl mx-auto space-y-6 mt-4">
+                                    <!-- Status Banner -->
+                                    <div :class="`border-${entryPlan.color}-500/50 bg-${entryPlan.color}-500/10 text-${entryPlan.color}-400`" class="border-l-4 rounded-xl p-6 shadow-sm">
+                                        <div class="flex items-start gap-4">
+                                            <i v-if="entryPlan.status.includes('RISK')" class="fa-solid fa-triangle-exclamation text-3xl mt-1"></i>
+                                            <i v-else-if="entryPlan.status.includes('GOOD') || entryPlan.status.includes('GREAT')" class="fa-solid fa-check-circle text-3xl mt-1"></i>
+                                            <i v-else class="fa-solid fa-circle-info text-3xl mt-1"></i>
+                                            
+                                            <div>
+                                                <h3 class="text-lg font-black tracking-wider uppercase mb-1">{{ entryPlan.status }}</h3>
+                                                <p class="text-sm font-medium opacity-90 leading-relaxed text-slate-300">{{ entryPlan.reason }}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="grid grid-cols-2 gap-4">
+                                        <div class="bg-slate-800/50 border border-slate-700 rounded-xl p-5 text-center">
+                                            <p class="text-[10px] text-slate-500 uppercase font-bold tracking-widest mb-1">Current Price (Entry)</p>
+                                            <p class="text-2xl font-mono font-black text-white">{{ formatNumber(entryPlan.current_price) }}</p>
+                                        </div>
+                                        <div class="bg-slate-800/50 border border-slate-700 rounded-xl p-5 text-center">
+                                            <p class="text-[10px] text-slate-500 uppercase font-bold tracking-widest mb-1">Risk/Reward Ratio</p>
+                                            <p class="text-2xl font-mono font-black" :class="entryPlan.rr_ratio >= 1.5 ? 'text-emerald-400' : 'text-amber-400'">{{ entryPlan.rr_ratio }}x</p>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <!-- TP List -->
+                                        <div class="bg-slate-800/50 border border-slate-700 rounded-xl p-5">
+                                            <p class="text-[10px] text-slate-500 uppercase font-bold tracking-widest mb-3 text-center">Take Profit Targets</p>
+                                            <div class="space-y-2">
+                                                <div v-for="(tp, idx) in entryPlan.targets.tp_list" :key="idx" class="flex justify-between items-center bg-slate-900/50 py-2 px-4 rounded border border-slate-700/50">
+                                                    <span class="text-xs font-bold text-slate-400">TP {{ idx + 1 }}</span>
+                                                    <span class="font-mono font-bold text-emerald-400">{{ formatNumber(tp) }}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <!-- CL -->
+                                        <div class="bg-slate-800/50 border border-slate-700 rounded-xl p-5 flex flex-col justify-center">
+                                            <p class="text-[10px] text-slate-500 uppercase font-bold tracking-widest mb-3 text-center">Max Stop Loss</p>
+                                            <div class="bg-rose-500/10 border border-rose-500/20 rounded-lg flex items-center justify-center p-6 mt-auto mb-auto">
+                                                <span class="font-mono font-black text-3xl text-rose-400">{{ formatNumber(entryPlan.targets.cl) }}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div v-else class="text-center text-slate-500 py-10 text-sm">
+                                    Trading Plan data is not available.
                                 </div>
                             </div>
 

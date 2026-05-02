@@ -25,6 +25,10 @@ const App = {
         const tradeSimPrice = ref(null);
         const loadingTradeSim = ref(false);
         const tradePlan = ref(null);
+        
+        // Entry Plan Tab State
+        const entryPlan = ref(null);
+        const loadingEntryPlan = ref(false);
 
         // Dashboard Lists
         const idxStocks = ref([]);
@@ -193,6 +197,7 @@ const App = {
             stockDetails.value = null;
             technicals.value = null;
             fundamentals.value = null;
+            entryPlan.value = null;
             activeTimeframe.value = '1y'; // Reset timeframe on new stock
 
             // Destroy old charts
@@ -214,13 +219,16 @@ const App = {
                 stockDetails.value.chartData = chartData;
 
                 // Fetch extra data for tabs
-                // We do it non-blocking or just wait? Let's wait to be simple
-                const [forecast, seasonal] = await Promise.all([
-                    fetchAPI(`stock/${ticker}/forecast`),
-                    fetchAPI(`stock/${ticker}/seasonal`)
+                loadingEntryPlan.value = true;
+                const [forecast, seasonal, entry] = await Promise.all([
+                    fetchAPI(`stock/${ticker}/forecast`).catch(() => null),
+                    fetchAPI(`stock/${ticker}/seasonal`).catch(() => null),
+                    fetchAPI(`stock/${ticker}/entry-plan`).catch(() => null)
                 ]);
                 stockDetails.value.forecastData = forecast;
                 stockDetails.value.seasonalData = seasonal;
+                entryPlan.value = entry;
+                loadingEntryPlan.value = false;
 
                 await nextTick();
                 if (activeTab.value === 'chart') {

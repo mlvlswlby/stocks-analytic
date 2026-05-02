@@ -366,3 +366,88 @@ def generate_trade_plan(df: pd.DataFrame, avg_price: float, buy_date: str = None
             "cl": cl
         }
     }
+
+def generate_entry_plan(df: pd.DataFrame):
+    """
+    Generates a trading plan specifically for BUYING at the current price.
+    Returns: TP, CL, RR, and Entry Status.
+    """
+    if df.empty:
+        return {}
+
+    last = df.iloc[-1]
+    current_price = last['Close']
+    
+    # Identify market phase
+    trend = determine_market_trend(df)
+    
+    # Calculate Support & Resistance for the last 6 months
+    window = df.iloc[-126:].copy()
+    res_indices = argrelextrema(window['High'].values, np.greater, order=5)[0]
+    sup_indices = argrelextrema(window['Low'].values, np.less, order=5)[0]
+    
+    resistances = window['High'].iloc[res_indices].sort_values(ascending=True).values
+    supports = window['Low'].iloc[sup_indices].sort_values(ascending=True).values
+    
+    # Needs to be above current price to profit
+    upper_levels = [r for r in resistances if r > current_price * 1.01] 
+    lower_levels = [s for s in supports if s < current_price * 0.99]
+    
+    tp_list = list(upper_levels[:5])
+    
+    if not tp_list:
+        recent_high = window['High'].max()
+        recent_low = window['Low'].min()
+        diff = recent_high - recent_low
+        if diff <= 0: diff = current_price * 0.10
+        
+        fib_multiples = [1.618, 2.618, 3.618, 4.236]
+        fib_levels = [recent_low + (diff * m) for m in fib_multiples]
+        tp_list = [f for f in fib_levels if f > current_price * 1.01][:5]
+        if not tp_list:
+            tp_list = [current_price * 1.05, current_price * 1.10, current_price * 1.15]
+            
+    # Stop Loss on nearest support
+    cl = lower_levels[-1] if len(lower_levels) > 0 else current_price * 0.95
+    if cl >= current_price: cl = current_price * 0.95
+    
+    # Assess Entry Status based purely on structure/trend
+    setup_status = "GOOD SETUP"
+    setup_color = "emerald"
+    reason = "Market trend is supportive for long positions."
+    
+    if trend in ["Bearish", "Distribution"]:
+        setup_status = "HIGH RISK / DO NOT BUY"
+        setup_color = "rose"
+        reason = "Trend is heavily Bearish or in Distribution. Entering now is catching a falling knife or buying at the top. Wait for accumulation."
+    elif trend == "Neutral":
+        setup_status = "NEUTRAL SETUP"
+        setup_color = "slate"
+        reason = "No clear trend. Breakout confirmation recommended before entering."
+    elif trend == "Accumulation":
+        setup_status = "GREAT SETUP (BOTTOM FISHING)"
+        setup_color = "teal"
+        reason = "Price is in an accumulation phase. Reward potential is high relative to risk."
+        
+    # Calculate basic Risk/Reward Ratio using the first TP
+    risk = current_price - cl
+    reward = tp_list[0] - current_price if tp_list else 0
+    rr_ratio = (reward / risk) if risk > 0 else 0
+    
+    if rr_ratio < 1 and trend not in ["Bearish", "Distribution"]:
+         # Demote good setups with bad R/R
+         setup_status = "POOR RISK/REWARD"
+         setup_color = "amber"
+         reason = f"Trend is okay, but potential profit to the nearest resistance ({tp_list[0]:.2f}) is smaller than the risk to nearest support ({cl:.2f})."
+    
+    return {
+        "current_price": current_price,
+        "status": setup_status,
+        "color": setup_color,
+        "reason": reason,
+        "rr_ratio": round(rr_ratio, 2),
+        "targets": {
+            "tp_list": tp_list,
+            "cl": cl
+        }
+    }
