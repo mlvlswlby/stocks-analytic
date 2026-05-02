@@ -376,7 +376,7 @@ def generate_entry_plan(df: pd.DataFrame):
         return {}
 
     last = df.iloc[-1]
-    current_price = last['Close']
+    current_price = float(last['Close'])
     
     # Identify market phase
     trend = determine_market_trend(df)
@@ -390,25 +390,25 @@ def generate_entry_plan(df: pd.DataFrame):
     supports = window['Low'].iloc[sup_indices].sort_values(ascending=True).values
     
     # Needs to be above current price to profit
-    upper_levels = [r for r in resistances if r > current_price * 1.01] 
-    lower_levels = [s for s in supports if s < current_price * 0.99]
+    upper_levels = [float(r) for r in resistances if r > current_price * 1.01] 
+    lower_levels = [float(s) for s in supports if s < current_price * 0.99]
     
     tp_list = list(upper_levels[:5])
     
     if not tp_list:
-        recent_high = window['High'].max()
-        recent_low = window['Low'].min()
+        recent_high = float(window['High'].max())
+        recent_low = float(window['Low'].min())
         diff = recent_high - recent_low
         if diff <= 0: diff = current_price * 0.10
         
         fib_multiples = [1.618, 2.618, 3.618, 4.236]
         fib_levels = [recent_low + (diff * m) for m in fib_multiples]
-        tp_list = [f for f in fib_levels if f > current_price * 1.01][:5]
+        tp_list = [float(f) for f in fib_levels if f > current_price * 1.01][:5]
         if not tp_list:
             tp_list = [current_price * 1.05, current_price * 1.10, current_price * 1.15]
             
     # Stop Loss on nearest support
-    cl = lower_levels[-1] if len(lower_levels) > 0 else current_price * 0.95
+    cl = float(lower_levels[-1]) if len(lower_levels) > 0 else current_price * 0.95
     if cl >= current_price: cl = current_price * 0.95
     
     # Assess Entry Status based purely on structure/trend
@@ -432,7 +432,7 @@ def generate_entry_plan(df: pd.DataFrame):
     # Calculate basic Risk/Reward Ratio using the first TP
     risk = current_price - cl
     reward = tp_list[0] - current_price if tp_list else 0
-    rr_ratio = (reward / risk) if risk > 0 else 0
+    rr_ratio = float(reward / risk) if risk > 0 else 0.0
     
     if rr_ratio < 1 and trend not in ["Bearish", "Distribution"]:
          # Demote good setups with bad R/R
