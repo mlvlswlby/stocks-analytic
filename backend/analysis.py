@@ -463,17 +463,69 @@ def generate_entry_plan(df: pd.DataFrame):
     tp1 = tp_list_clean[0] if tp_list_clean else round(current_price * 1.05, 2)
     tp2 = tp_list_clean[1] if len(tp_list_clean) > 1 else None
 
-    # Formulate Actionable Best Setup Recommendation
-    if trend in ["Bearish", "Distribution"]:
-        best_setup_desc = f"Beli spekulatif di harga {current_price_clean}, dan selama harga bertahan di atas {cl_clean}, maka potensi pantulan teknikal (rebound) menuju {tp1} cukup terbuka. Wajib cut loss jika harga breakdown di bawah {cl_clean}."
-    elif trend == "Accumulation":
-        best_setup_desc = f"Beli di harga {current_price_clean} (area akumulasi), dan selama harga bertahan di atas {cl_clean}, maka potensi kenaikan menuju {tp1}{f' hingga {tp2}' if tp2 else ''} akan sangat baik dengan risiko terukur."
-    elif setup_status == "GOOD SETUP":
-        best_setup_desc = f"Beli di harga {current_price_clean}, dan selama harga bertahan di atas {cl_clean}, maka potensi kenaikan menuju {tp1}{f' hingga {tp2}' if tp2 else ''} akan sangat baik mengikuti kelanjutan tren naik."
-    elif setup_status == "POOR RISK/REWARD":
-        best_setup_desc = f"Beli di harga {current_price_clean} (atau tunggu pullback mendekati {cl_clean}). Selama harga bertahan di atas {cl_clean}, maka potensi naik menguji resisten {tp1} tetap terbuka."
+    # --- TACTICAL BEST SETUP: Target Price for Entry (Support Retest / Pullback) ---
+    s1 = float(lower_levels[-1]) if len(lower_levels) > 0 else None
+    s2 = float(lower_levels[-2]) if len(lower_levels) > 1 else None
+    
+    if s1:
+        dist_pct = (current_price - s1) / current_price * 100.0
+        if dist_pct <= 1.5:
+            # Price is already resting right at key support
+            best_entry = current_price
+            strategy_label = "Buy on Support"
+            is_pullback = False
+        else:
+            # Price has extended away; optimal entry is to wait for pullback to support
+            best_entry = s1
+            strategy_label = "Buy on Pullback / Retest Support"
+            is_pullback = True
+            
+        # Cut Loss for best setup placed just under support
+        if s2 and s2 >= s1 * 0.92:
+            best_cl = round(s2 * 0.99, 2)
+        else:
+            best_cl = round(best_entry * 0.97, 2)
     else:
-        best_setup_desc = f"Beli di area harga {current_price_clean}, dan selama harga bertahan di atas {cl_clean}, maka potensi naik menuju resisten {tp1} cukup baik."
+        best_entry = round(current_price * 0.96, 2)
+        best_cl = round(best_entry * 0.96, 2)
+        strategy_label = "Buy on Pullback Discount"
+        is_pullback = True
+
+    if best_cl >= best_entry:
+        best_cl = round(best_entry * 0.96, 2)
+
+    target_entry_clean = round(float(best_entry), 2)
+    target_cl_clean = round(float(best_cl), 2)
+    best_tp1 = tp1
+    best_tp2 = tp2
+
+    # Asymmetric Risk/Reward Ratio for Best Setup
+    bs_risk = target_entry_clean - target_cl_clean
+    bs_reward = best_tp1 - target_entry_clean
+    best_rr = round(bs_reward / bs_risk, 2) if bs_risk > 0 else 0.0
+
+    # Actionable Formulated Description
+    if trend in ["Bearish", "Distribution"]:
+        best_setup_desc = (
+            f"Saham sedang dalam fase {trend}. Hindari membeli langsung di harga sekarang ({current_price_clean})! "
+            f"Best Setup: Disarankan menunggu antri beli ketika harga menyentuh support di Rp {target_entry_clean}. "
+            f"Selama harga bertahan di atas Cut Loss Rp {target_cl_clean}, potensi pantulan teknikal menuju TP 1 Rp {best_tp1}"
+            f"{f' dan TP 2 Rp {best_tp2}' if best_tp2 else ''} terbuka dengan Risk/Reward {best_rr}x. Wajib Cut Loss jika tembus di bawah Rp {target_cl_clean}."
+        )
+    elif is_pullback:
+        best_setup_desc = (
+            f"Best Setup ({strategy_label}): Harga saat ini ({current_price_clean}) sudah naik di atas support. "
+            f"Disarankan jangan mengejar harga, melainkan tunggu atau antri beli pada target harga Rp {target_entry_clean} (area support terdekat). "
+            f"Selama harga mampu bertahan di atas batas Cut Loss Rp {target_cl_clean}, potensi kenaikan menuju TP 1 Rp {best_tp1}"
+            f"{f' hingga TP 2 Rp {best_tp2}' if best_tp2 else ''} sangat optimal dengan Risk/Reward {best_rr}x."
+        )
+    else:
+        best_setup_desc = (
+            f"Best Setup ({strategy_label}): Harga saat ini ({current_price_clean}) sudah berada tepat di bantalan support kuat. "
+            f"Disarankan entry beli di target harga Rp {target_entry_clean}. "
+            f"Selama harga bertahan di atas batas Cut Loss Rp {target_cl_clean}, potensi kenaikan menuju TP 1 Rp {best_tp1}"
+            f"{f' hingga TP 2 Rp {best_tp2}' if best_tp2 else ''} sangat menjanjikan dengan Risk/Reward {best_rr}x."
+        )
 
     return {
         "current_price": current_price_clean,
@@ -483,10 +535,13 @@ def generate_entry_plan(df: pd.DataFrame):
         "rr_ratio": round(rr_ratio, 2),
         "patterns": active_patterns,
         "best_setup": {
-            "entry": current_price_clean,
-            "hold_above": cl_clean,
-            "target": tp1,
-            "target_secondary": tp2,
+            "strategy": strategy_label,
+            "entry_target": target_entry_clean,
+            "cl_target": target_cl_clean,
+            "tp_target": best_tp1,
+            "tp_secondary": best_tp2,
+            "best_rr": best_rr,
+            "is_pullback": is_pullback,
             "description": best_setup_desc
         },
         "targets": {

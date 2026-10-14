@@ -250,52 +250,214 @@ def get_stock_data(ticker: str, period="2y", interval="1d"):
         
     return stock, df
 
-@app.get("/api/stock/{ticker}")
-def get_stock_details(ticker: str):
-    stock, df = get_stock_data(ticker, period="1d")
+# Curated profiles for primary IDX stocks to guarantee rich Indonesian descriptions
+KNOWN_PROFILES = {
+    "BBCA.JK": {
+        "name": "PT Bank Central Asia Tbk",
+        "sector": "Financial Services",
+        "industry": "Banks - Regional",
+        "description": "PT Bank Central Asia Tbk (BCA) adalah bank swasta terbesar di Indonesia yang menyediakan beragam solusi perbankan dan keuangan terpadu bagi nasabah perorangan, usaha kecil dan menengah (UKM), serta korporasi.",
+        "website": "https://www.bca.co.id",
+        "logo_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5c/Bank_Central_Asia.svg/330px-Bank_Central_Asia.svg.png"
+    },
+    "BBRI.JK": {
+        "name": "PT Bank Rakyat Indonesia (Persero) Tbk",
+        "sector": "Financial Services",
+        "industry": "Banks - Regional",
+        "description": "PT Bank Rakyat Indonesia (Persero) Tbk (BRI) adalah salah satu bank milik negara terbesar di Indonesia yang memiliki spesialisasi dan fokus utama pada pemberdayaan segmen usaha mikro, kecil, dan menengah (UMKM).",
+        "website": "https://www.bri.co.id",
+        "logo_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9a/BRI_2025_%28with_full_name%29.svg/330px-BRI_2025_%28with_full_name%29.svg.png"
+    },
+    "BMRI.JK": {
+        "name": "PT Bank Mandiri (Persero) Tbk",
+        "sector": "Financial Services",
+        "industry": "Banks - Regional",
+        "description": "PT Bank Mandiri (Persero) Tbk adalah salah satu bank BUMN terbesar di Indonesia dengan portofolio pembiayaan korporasi, komersial, ritel, dan digital banking (Livin' & Kopra) yang sangat kuat.",
+        "website": "https://www.bankmandiri.co.id",
+        "logo_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ad/Bank_Mandiri_logo_2016.svg/330px-Bank_Mandiri_logo_2016.svg.png"
+    },
+    "BBNI.JK": {
+        "name": "PT Bank Negara Indonesia (Persero) Tbk",
+        "sector": "Financial Services",
+        "industry": "Banks - Regional",
+        "description": "PT Bank Negara Indonesia (Persero) Tbk (BNI) adalah salah satu institusi perbankan tertua di Indonesia yang memiliki fokus kuat pada pembiayaan korporasi, konsumer, dan jaringan operasional internasional.",
+        "website": "https://www.bni.co.id",
+        "logo_url": "https://upload.wikimedia.org/wikipedia/en/thumb/5/5a/Bank_Negara_Indonesia_logo.svg/330px-Bank_Negara_Indonesia_logo.svg.png"
+    },
+    "TLKM.JK": {
+        "name": "PT Telkom Indonesia (Persero) Tbk",
+        "sector": "Communication Services",
+        "industry": "Telecom Services",
+        "description": "PT Telkom Indonesia (Persero) Tbk adalah BUMN telekomunikasi dan jaringan digital terbesar di Indonesia, melayani ratusan juta pelanggan seluler (Telkomsel) serta internet fixed broadband (IndiHome).",
+        "website": "https://www.telkom.co.id",
+        "logo_url": "https://thumb.wikimedia.org/wikipedia/id/thumb/c/c4/Telkom_Indonesia_2013.svg/langid-330px-Telkom_Indonesia_2013.svg.png"
+    },
+    "ASII.JK": {
+        "name": "PT Astra International Tbk",
+        "sector": "Consumer Cyclical",
+        "industry": "Auto Manufacturers",
+        "description": "PT Astra International Tbk adalah salah satu konglomerasi terbesar di Indonesia dengan lini bisnis otomotif, jasa keuangan, alat berat & pertambangan (United Tractors), agribisnis, dan infrastruktur.",
+        "website": "https://www.astra.co.id",
+        "logo_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7b/Astra_International_logo.svg/330px-Astra_International_logo.svg.png"
+    },
+    "UNVR.JK": {
+        "name": "PT Unilever Indonesia Tbk",
+        "sector": "Consumer Defensive",
+        "industry": "Household & Personal Products",
+        "description": "PT Unilever Indonesia Tbk adalah produsen barang kebutuhan konsumen sehari-hari (FMCG) terkemuka di Indonesia yang memproduksi makanan, minuman, produk pembersih rumah tangga, dan perawatan tubuh.",
+        "website": "https://www.unilever.co.id",
+        "logo_url": "https://upload.wikimedia.org/wikipedia/en/thumb/e/e4/Unilever.svg/330px-Unilever.svg.png"
+    },
+    "GOTO.JK": {
+        "name": "PT GoTo Gojek Tokopedia Tbk",
+        "sector": "Technology",
+        "industry": "Internet Content & Information",
+        "description": "PT GoTo Gojek Tokopedia Tbk adalah ekosistem digital terbesar di Indonesia yang menggabungkan layanan on-demand (Gojek), e-commerce (Tokopedia), dan layanan teknologi finansial terintegrasi (GoPay).",
+        "website": "https://www.gotocompany.com",
+        "logo_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/30/GoTo_logo.svg/330px-GoTo_logo.svg.png"
+    },
+    "ICBP.JK": {
+        "name": "PT Indofood CBP Sukses Makmur Tbk",
+        "sector": "Consumer Defensive",
+        "industry": "Packaged Foods",
+        "description": "PT Indofood CBP Sukses Makmur Tbk adalah produsen makanan olahan dalam kemasan terkemuka di Indonesia dengan merek legendaris seperti mi instan Indomie, susu Indomilk, dan aneka bumbu makanan.",
+        "website": "https://www.indofoodcbp.com"
+    },
+    "INDF.JK": {
+        "name": "PT Indofood Sukses Makmur Tbk",
+        "sector": "Consumer Defensive",
+        "industry": "Packaged Foods",
+        "description": "PT Indofood Sukses Makmur Tbk adalah perusahaan total food solutions terkemuka di Indonesia dengan operasi bisnis yang mencakup seluruh tahapan proses produksi makanan dari perkebunan hingga ritel.",
+        "website": "https://www.indofood.com"
+    },
+    "ADRO.JK": {
+        "name": "PT Adaro Energy Indonesia Tbk",
+        "sector": "Energy",
+        "industry": "Thermal Coal",
+        "description": "PT Adaro Energy Indonesia Tbk adalah grup energi dan pertambangan batu bara terintegrasi di Indonesia yang kini aktif mengembangkan pilar bisnis energi hijau, pembangkit listrik, dan smelter aluminium.",
+        "website": "https://www.adaro.com"
+    },
+    "PTBA.JK": {
+        "name": "PT Bukit Asam Tbk",
+        "sector": "Energy",
+        "industry": "Thermal Coal",
+        "description": "PT Bukit Asam Tbk adalah anggota holding industri pertambangan BUMN (MIND ID) yang bergerak di bidang pertambangan batu bara terintegrasi dan ketenagalistrikan nasional.",
+        "website": "https://www.ptba.co.id"
+    },
+    "ANTM.JK": {
+        "name": "PT Aneka Tambang Tbk",
+        "sector": "Basic Materials",
+        "industry": "Other Industrial Metals & Mining",
+        "description": "PT Aneka Tambang Tbk (Antam) adalah anggota MIND ID yang bergerak di bidang eksplorasi, penambangan, pengolahan serta pemurnian komoditas emas mulia, feronikel, dan bauksit.",
+        "website": "https://www.antam.com"
+    },
+    "PGAS.JK": {
+        "name": "PT Perusahaan Gas Negara Tbk",
+        "sector": "Utilities",
+        "industry": "Utilities - Regulated Gas",
+        "description": "PT Perusahaan Gas Negara Tbk (PGN) adalah subholding gas Pertamina yang mengelola jaringan transmisi dan distribusi gas bumi terbesar di Indonesia untuk kebutuhan industri dan rumah tangga.",
+        "website": "https://www.pgn.co.id"
+    }
+}
+
+def resolve_company_profile(ticker: str, stock, df: pd.DataFrame) -> dict:
+    ticker_upper = ticker.upper()
+    known = KNOWN_PROFILES.get(ticker_upper, {})
     
+    # Try fetching stock.info safely
+    info = {}
     try:
-        info = stock.info
-    except Exception as e:
-        print(f"yfinance info error: {e}")
+        info = stock.info or {}
+    except Exception:
         info = {}
         
-    # Try to find logo - use Clearbit API as reliable fallback if website exists
-    website = info.get("website")
-    logo_url = info.get("logo_url", "")
+    # Get reliable closing price from dataframe
+    last_price = float(df.iloc[-1]['Close']) if not df.empty else (info.get("currentPrice") or info.get("previousClose") or 0.0)
     
+    name = info.get("longName") or info.get("shortName") or known.get("name")
+    sector = info.get("sector") or known.get("sector")
+    industry = info.get("industry") or known.get("industry")
+    description = info.get("longBusinessSummary") or known.get("description")
+    website = info.get("website") or known.get("website") or ""
+    logo_url = info.get("logo_url") or known.get("logo_url") or ""
+    
+    # If sector, industry, or name is missing, query Yahoo Search API (public, no crumb needed)
+    if not sector or sector == "N/A" or not industry or industry == "N/A" or not name or name == ticker_upper:
+        try:
+            url = "https://query2.finance.yahoo.com/v1/finance/search"
+            headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'}
+            resp = requests.get(url, headers=headers, params={"q": ticker_upper, "quotesCount": 1}, timeout=3)
+            if resp.ok:
+                data = resp.json()
+                quotes = data.get("quotes", [])
+                if quotes:
+                    q = quotes[0]
+                    name = name or q.get("longname") or q.get("shortname")
+                    sector = sector or q.get("sectorDisp") or q.get("sector")
+                    industry = industry or q.get("industryDisp") or q.get("industry")
+        except Exception as e:
+            print(f"Yahoo Search profile error: {e}")
+
+    # If description is still missing, query Wikipedia REST API (fast & free)
+    if not description or description == "N/A" or len(description) < 15:
+        try:
+            clean_name = (name or ticker_upper)
+            for stopword in ["(Persero)", "PT ", "PT. ", " Tbk", " Tbk.", " Corp.", " Corporation", " Inc.", " Co., Ltd.", " Ltd."]:
+                clean_name = clean_name.replace(stopword, "")
+            clean_name = clean_name.strip().replace(" ", "_")
+            
+            headers = {'User-Agent': 'StocksAnalyticApp/1.0 (info@stocks-analytic.local)'}
+            wiki_langs = ["id", "en"] if ticker_upper.endswith(".JK") else ["en", "id"]
+            for lang in wiki_langs:
+                wiki_url = f"https://{lang}.wikipedia.org/api/rest_v1/page/summary/{clean_name}"
+                w_resp = requests.get(wiki_url, headers=headers, timeout=3)
+                if w_resp.ok:
+                    w_data = w_resp.json()
+                    extract = w_data.get("extract")
+                    if extract and len(extract) > 20:
+                        description = extract
+                        if not logo_url and w_data.get("thumbnail"):
+                            logo_url = w_data["thumbnail"].get("source", "")
+                        break
+        except Exception as e:
+            print(f"Wikipedia profile error: {e}")
+            
+    # Final fallbacks to ensure N/A NEVER appears
+    name = name or ticker_upper
+    sector = sector if sector and sector != "N/A" else ("Jasa Keuangan & Perbankan" if "BANK" in name.upper() else "Industri & Bisnis")
+    industry = industry if industry and industry != "N/A" else ("Perbankan Komersial" if "BANK" in name.upper() else "Operasional Publik")
+    
+    if not description or description == "N/A" or len(description) < 15:
+        exch_label = "Bursa Efek Indonesia (IDX)" if ticker_upper.endswith(".JK") else "Pasar Modal Global (US Market)"
+        description = f"{name} ({ticker_upper}) adalah perusahaan terbuka yang sahamnya diperdagangkan di {exch_label}. Perusahaan bergerak di sektor {sector} dengan fokus kegiatan operasional pada {industry}."
+        
+    # Clearbit logo fallback if domain exists
     if not logo_url and website:
         try:
-            # Clean url
             clean_url = website.lower().replace("https://", "").replace("http://", "").split("/")[0]
-            
-            # Remove common subdomains that might break logo lookup (ir., investors., www.)
-            # This is a heuristic. Ideally usage of tldextract is better but avoiding extra deps.
-            parts = clean_url.split('.')
-            if len(parts) > 2:
-                # likely subdomain.domain.com. Keep last two.
-                # Exception: co.uk, com.sg etc. But for US stocks (most common) last 2 is safe.
-                # Let's try to strip specifically known subdomains first
-                for sub in ["www.", "ir.", "investors.", "investor.", "corporate."]:
-                    if clean_url.startswith(sub):
-                        clean_url = clean_url.replace(sub, "")
-                        break
-            
             logo_url = f"https://logo.clearbit.com/{clean_url}"
         except Exception:
             logo_url = ""
-        
-        
-    return clean_nans({
-        "symbol": ticker,
-        "name": info.get("longName", ticker),
-        "price": info.get("currentPrice", info.get("previousClose")),
-        "sector": info.get("sector", "N/A"),
-        "industry": info.get("industry", "N/A"),
-        "description": info.get("longBusinessSummary", "N/A"),
+
+    domain = website.replace("https://", "").replace("http://", "").split("/")[0] if website else ""
+
+    return {
+        "symbol": ticker_upper,
+        "name": name,
+        "price": last_price,
+        "sector": sector,
+        "industry": industry,
+        "description": description,
         "logo_url": logo_url,
-        "domain": website.replace("https://", "").replace("http://", "").split("/")[0] if website else ""
-    })
+        "website": website,
+        "domain": domain
+    }
+
+@app.get("/api/stock/{ticker}")
+def get_stock_details(ticker: str):
+    stock, df = get_stock_data(ticker, period="1d")
+    profile = resolve_company_profile(ticker, stock, df)
+    return clean_nans(profile)
 
 @app.get("/api/stock/{ticker}/technicals")
 def get_technicals(ticker: str):
