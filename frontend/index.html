@@ -669,6 +669,42 @@
                                         </div>
                                     </div>
                                     
+                                    <!-- Rekomendasi Best Setup Card -->
+                                    <div v-if="entryPlan.best_setup" class="bg-gradient-to-r from-blue-900/40 via-indigo-900/30 to-slate-800/60 border border-blue-500/40 rounded-xl p-5 shadow-lg relative overflow-hidden backdrop-blur">
+                                        <div class="flex items-start gap-3.5">
+                                            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500/30 to-teal-500/30 border border-blue-400/50 flex items-center justify-center flex-shrink-0 mt-0.5 shadow-md">
+                                                <i class="fa-solid fa-lightbulb text-yellow-300 text-lg"></i>
+                                            </div>
+                                            <div class="flex-1">
+                                                <div class="flex items-center justify-between mb-1.5">
+                                                    <span class="text-xs uppercase font-black tracking-wider text-blue-400 flex items-center gap-1.5">
+                                                        <i class="fa-solid fa-star text-amber-400"></i> Rekomendasi Best Setup
+                                                    </span>
+                                                    <span class="text-[10px] px-2 py-0.5 bg-blue-500/20 text-blue-300 font-bold rounded-full border border-blue-500/30 uppercase tracking-wider">
+                                                        Actionable
+                                                    </span>
+                                                </div>
+                                                <p class="text-sm font-semibold text-white leading-relaxed mb-3.5">
+                                                    {{ entryPlan.best_setup.description }}
+                                                </p>
+                                                <div class="grid grid-cols-3 gap-2.5 text-xs font-mono">
+                                                    <div class="bg-slate-900/90 p-2.5 rounded-lg border border-slate-700/80 text-center">
+                                                        <span class="text-slate-400 text-[9px] block uppercase font-sans font-bold tracking-wider mb-0.5">Beli di Harga</span>
+                                                        <span class="text-white font-extrabold text-sm">{{ formatNumber(entryPlan.best_setup.entry) }}</span>
+                                                    </div>
+                                                    <div class="bg-slate-900/90 p-2.5 rounded-lg border border-emerald-500/30 text-center">
+                                                        <span class="text-slate-400 text-[9px] block uppercase font-sans font-bold tracking-wider mb-0.5">Bertahan di Atas</span>
+                                                        <span class="text-emerald-400 font-extrabold text-sm">&gt; {{ formatNumber(entryPlan.best_setup.hold_above) }}</span>
+                                                    </div>
+                                                    <div class="bg-slate-900/90 p-2.5 rounded-lg border border-cyan-500/30 text-center">
+                                                        <span class="text-slate-400 text-[9px] block uppercase font-sans font-bold tracking-wider mb-0.5">Potensi Target</span>
+                                                        <span class="text-cyan-400 font-extrabold text-sm">{{ formatNumber(entryPlan.best_setup.target) }}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
                                     <!-- Price and RR Ratio Cards -->
                                     <div class="grid grid-cols-2 gap-4">
                                         <div class="bg-slate-800/50 border border-slate-700 rounded-xl p-5 text-center shadow-inner">
@@ -823,7 +859,7 @@
     </div>
 
     <!-- App Logic -->
-    <script src="/static/app.js?v=6"></script>
+    <script src="/static/app.js?v=7"></script>
 </body>
 
 </html>

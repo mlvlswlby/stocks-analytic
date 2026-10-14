@@ -460,6 +460,21 @@ def generate_entry_plan(df: pd.DataFrame):
     cl_clean = round(float(cl), 2)
     current_price_clean = round(float(current_price), 2)
     
+    tp1 = tp_list_clean[0] if tp_list_clean else round(current_price * 1.05, 2)
+    tp2 = tp_list_clean[1] if len(tp_list_clean) > 1 else None
+
+    # Formulate Actionable Best Setup Recommendation
+    if trend in ["Bearish", "Distribution"]:
+        best_setup_desc = f"Beli spekulatif di harga {current_price_clean}, dan selama harga bertahan di atas {cl_clean}, maka potensi pantulan teknikal (rebound) menuju {tp1} cukup terbuka. Wajib cut loss jika harga breakdown di bawah {cl_clean}."
+    elif trend == "Accumulation":
+        best_setup_desc = f"Beli di harga {current_price_clean} (area akumulasi), dan selama harga bertahan di atas {cl_clean}, maka potensi kenaikan menuju {tp1}{f' hingga {tp2}' if tp2 else ''} akan sangat baik dengan risiko terukur."
+    elif setup_status == "GOOD SETUP":
+        best_setup_desc = f"Beli di harga {current_price_clean}, dan selama harga bertahan di atas {cl_clean}, maka potensi kenaikan menuju {tp1}{f' hingga {tp2}' if tp2 else ''} akan sangat baik mengikuti kelanjutan tren naik."
+    elif setup_status == "POOR RISK/REWARD":
+        best_setup_desc = f"Beli di harga {current_price_clean} (atau tunggu pullback mendekati {cl_clean}). Selama harga bertahan di atas {cl_clean}, maka potensi naik menguji resisten {tp1} tetap terbuka."
+    else:
+        best_setup_desc = f"Beli di area harga {current_price_clean}, dan selama harga bertahan di atas {cl_clean}, maka potensi naik menuju resisten {tp1} cukup baik."
+
     return {
         "current_price": current_price_clean,
         "status": setup_status,
@@ -467,6 +482,13 @@ def generate_entry_plan(df: pd.DataFrame):
         "reason": reason,
         "rr_ratio": round(rr_ratio, 2),
         "patterns": active_patterns,
+        "best_setup": {
+            "entry": current_price_clean,
+            "hold_above": cl_clean,
+            "target": tp1,
+            "target_secondary": tp2,
+            "description": best_setup_desc
+        },
         "targets": {
             "tp_list": tp_list_clean,
             "cl": cl_clean
