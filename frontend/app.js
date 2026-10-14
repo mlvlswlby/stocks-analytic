@@ -225,26 +225,31 @@ const App = {
                     fetchAPI(`stock/${ticker}/seasonal`).catch(() => null),
                     fetchAPI(`stock/${ticker}/entry-plan`).catch((e) => ({ error: true, traceback: e.toString(), from_fetch: true }))
                 ]).then(([forecast, seasonal, entry]) => {
-                    if (stockDetails.value && stockDetails.value.symbol === ticker) {
-                        stockDetails.value.forecastData = forecast;
-                        stockDetails.value.seasonalData = seasonal;
+                    if (currentStock.value === ticker) {
+                        if (stockDetails.value) {
+                            stockDetails.value.forecastData = forecast;
+                            stockDetails.value.seasonalData = seasonal;
+                        }
                         entryPlan.value = entry;
-                        loadingEntryPlan.value = false;
                         
-                        // If they are already on the tab, render immediately
+                        // If user is already on the tab, render immediately
                         if (activeTab.value === 'forecasting') setTimeout(() => renderForecastChart(chartData, forecast), 50);
                         if (activeTab.value === 'seasonal') setTimeout(() => renderSeasonalChart(seasonal), 50);
+                    }
+                }).catch((err) => {
+                    console.error("Tab data loading error:", err);
+                    if (currentStock.value === ticker) {
+                        entryPlan.value = { error: true, traceback: err.toString(), from_fetch: true };
+                    }
+                }).finally(() => {
+                    if (currentStock.value === ticker) {
+                        loadingEntryPlan.value = false;
                     }
                 });
 
                 await nextTick();
                 if (activeTab.value === 'chart') {
-                    // Small delay to ensure v-show has applied layout
                     setTimeout(() => renderMainChart(chartData), 50);
-                } else if (activeTab.value === 'forecasting') {
-                    setTimeout(() => renderForecastChart(chartData, forecast), 50);
-                } else if (activeTab.value === 'seasonal') {
-                    setTimeout(() => renderSeasonalChart(seasonal), 50);
                 }
 
             } catch (e) {
@@ -476,6 +481,32 @@ const App = {
             return 'text-gray-500 font-bold'; // Neutral
         });
 
+        const fetchEntryPlan = async (ticker = currentStock.value) => {
+            if (!ticker) return;
+            loadingEntryPlan.value = true;
+            try {
+                const entry = await fetchAPI(`stock/${ticker}/entry-plan`);
+                if (currentStock.value === ticker) {
+                    entryPlan.value = entry;
+                }
+            } catch (e) {
+                console.error("Entry plan fetch error:", e);
+                if (currentStock.value === ticker) {
+                    entryPlan.value = { error: true, traceback: e.toString(), from_fetch: true };
+                }
+            } finally {
+                if (currentStock.value === ticker) {
+                    loadingEntryPlan.value = false;
+                }
+            }
+        };
+
+        watch(activeTab, (newTab) => {
+            if (newTab === 'trading_plan' && (!entryPlan.value || entryPlan.value.error) && !loadingEntryPlan.value && currentStock.value) {
+                fetchEntryPlan(currentStock.value);
+            }
+        });
+
         onMounted(() => {
             initDashboard();
         });
@@ -516,7 +547,11 @@ const App = {
             tradeSimPrice,
             loadingTradeSim,
             tradePlan,
-            analyzeTrade
+            analyzeTrade,
+            // Entry Plan Tab (Trading Plan)
+            entryPlan,
+            loadingEntryPlan,
+            fetchEntryPlan
         };
     }
 };

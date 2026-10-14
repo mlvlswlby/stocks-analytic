@@ -370,7 +370,8 @@ def generate_trade_plan(df: pd.DataFrame, avg_price: float, buy_date: str = None
 def generate_entry_plan(df: pd.DataFrame):
     """
     Generates a trading plan specifically for BUYING at the current price.
-    Returns: TP, CL, RR, and Entry Status.
+    Purely technical analysis (price action, chart patterns, support/resistance, Fibonacci).
+    Returns: TP targets, CL limit, RR ratio, Candlestick patterns, and Entry Status.
     """
     if df.empty:
         return {}
@@ -380,26 +381,38 @@ def generate_entry_plan(df: pd.DataFrame):
     
     # Identify market phase
     trend = determine_market_trend(df)
+    candle_patterns = detect_candle_patterns(df)
+    active_patterns = [name for name, present in candle_patterns.items() if present]
     
-    # Calculate Support & Resistance for the last 6 months
+    # Calculate Support & Resistance for the last 6 months (~126 trading days)
     window = df.iloc[-126:].copy()
-    res_indices = argrelextrema(window['High'].values, np.greater, order=5)[0]
-    sup_indices = argrelextrema(window['Low'].values, np.less, order=5)[0]
     
-    resistances = window['High'].iloc[res_indices].sort_values(ascending=True).values
-    supports = window['Low'].iloc[sup_indices].sort_values(ascending=True).values
+    # Adaptive order to prevent crash on small dataframes
+    order_val = min(5, max(1, len(window) // 6)) if len(window) >= 4 else 1
     
-    # Needs to be above current price to profit
+    try:
+        res_indices = argrelextrema(window['High'].values, np.greater, order=order_val)[0]
+        sup_indices = argrelextrema(window['Low'].values, np.less, order=order_val)[0]
+        resistances = window['High'].iloc[res_indices].sort_values(ascending=True).values
+        supports = window['Low'].iloc[sup_indices].sort_values(ascending=True).values
+    except Exception:
+        resistances = np.array([])
+        supports = np.array([])
+    
+    # Take Profit levels must be above current price (+1% minimum)
     upper_levels = [float(r) for r in resistances if r > current_price * 1.01] 
+    # Cut Loss levels must be below current price (-1% minimum)
     lower_levels = [float(s) for s in supports if s < current_price * 0.99]
     
     tp_list = list(upper_levels[:5])
     
+    # If no structural resistance above, project target via Fibonacci extensions
     if not tp_list:
         recent_high = float(window['High'].max())
         recent_low = float(window['Low'].min())
         diff = recent_high - recent_low
-        if diff <= 0: diff = current_price * 0.10
+        if diff <= 0: 
+            diff = current_price * 0.10
         
         fib_multiples = [1.618, 2.618, 3.618, 4.236]
         fib_levels = [recent_low + (diff * m) for m in fib_multiples]
@@ -407,47 +420,55 @@ def generate_entry_plan(df: pd.DataFrame):
         if not tp_list:
             tp_list = [current_price * 1.05, current_price * 1.10, current_price * 1.15]
             
-    # Stop Loss on nearest support
-    cl = float(lower_levels[-1]) if len(lower_levels) > 0 else current_price * 0.95
-    if cl >= current_price: cl = current_price * 0.95
+    # Stop Loss on nearest key support level
+    cl = float(lower_levels[-1]) if len(lower_levels) > 0 else (current_price * 0.95)
+    if cl >= current_price or cl <= 0:
+        cl = current_price * 0.95
     
-    # Assess Entry Status based purely on structure/trend
+    # Assess Entry Status based purely on structure/trend & candlestick patterns
     setup_status = "GOOD SETUP"
     setup_color = "emerald"
     reason = "Market trend is supportive for long positions."
     
+    pattern_note = f" (Pola candlestick: {', '.join(active_patterns)})" if active_patterns else ""
+    
     if trend in ["Bearish", "Distribution"]:
         setup_status = "HIGH RISK / DO NOT BUY"
         setup_color = "rose"
-        reason = "Trend is heavily Bearish or in Distribution. Entering now is catching a falling knife or buying at the top. Wait for accumulation."
+        reason = f"Saham ini terlalu risky untuk dibeli saat ini karena sedang berada dalam fase {trend}. Membeli sekarang berisiko pisau jatuh. Tetap disediakan Trading Plan (TP & SL) di bawah ini sebagai acuan teknikal.{pattern_note}"
     elif trend == "Neutral":
         setup_status = "NEUTRAL SETUP"
         setup_color = "slate"
-        reason = "No clear trend. Breakout confirmation recommended before entering."
+        reason = f"Pergerakan harga saat ini sideways / netral tanpa konfirmasi arah yang kuat. Disarankan menunggu sinyal konfirmasi breakout.{pattern_note}"
     elif trend == "Accumulation":
         setup_status = "GREAT SETUP (BOTTOM FISHING)"
         setup_color = "teal"
-        reason = "Price is in an accumulation phase. Reward potential is high relative to risk."
+        reason = f"Harga berada di area akumulasi bawah (bottoming) dengan potensi reward yang menarik relatif terhadap risiko.{pattern_note}"
         
     # Calculate basic Risk/Reward Ratio using the first TP
     risk = current_price - cl
     reward = tp_list[0] - current_price if tp_list else 0
     rr_ratio = float(reward / risk) if risk > 0 else 0.0
     
-    if rr_ratio < 1 and trend not in ["Bearish", "Distribution"]:
-         # Demote good setups with bad R/R
+    if rr_ratio < 1.0 and trend not in ["Bearish", "Distribution"]:
          setup_status = "POOR RISK/REWARD"
          setup_color = "amber"
-         reason = f"Trend is okay, but potential profit to the nearest resistance ({tp_list[0]:.2f}) is smaller than the risk to nearest support ({cl:.2f})."
+         reason = f"Trend teknikal cukup baik, namun potensi profit ke resisten terdekat ({round(tp_list[0], 2)}) lebih kecil dibanding batas risiko cut loss ({round(cl, 2)}). R/R kurang optimal.{pattern_note}"
+    
+    # Clean rounding
+    tp_list_clean = [round(float(tp), 2) for tp in tp_list]
+    cl_clean = round(float(cl), 2)
+    current_price_clean = round(float(current_price), 2)
     
     return {
-        "current_price": current_price,
+        "current_price": current_price_clean,
         "status": setup_status,
         "color": setup_color,
         "reason": reason,
         "rr_ratio": round(rr_ratio, 2),
+        "patterns": active_patterns,
         "targets": {
-            "tp_list": tp_list,
-            "cl": cl
+            "tp_list": tp_list_clean,
+            "cl": cl_clean
         }
     }

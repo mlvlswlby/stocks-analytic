@@ -104,7 +104,8 @@
             <div class="ticker-wrap w-full">
                 <div class="ticker h-full flex items-center">
                     <div v-for="stock in marketData.idx" :key="stock.symbol"
-                        class="ticker-item flex items-center gap-2 px-6 border-r border-slate-800">
+                        @click="selectSuggestion(stock.symbol)"
+                        class="ticker-item flex items-center gap-2 px-6 border-r border-slate-800 cursor-pointer hover:bg-slate-800/80 transition-colors">
                         <span class="font-bold text-slate-200 text-sm">{{ stock.symbol }}</span>
                         <span class="font-mono text-xs font-bold"
                             :class="stock.pchange >= 0 ? 'text-emerald-400' : 'text-rose-400'">
@@ -113,7 +114,8 @@
                     </div>
                     <!-- Duplicate for seamless loop if needed, but CSS handles it -->
                     <div v-for="stock in marketData.idx" :key="'dup'+stock.symbol"
-                        class="ticker-item flex items-center gap-2 px-6 border-r border-slate-800">
+                        @click="selectSuggestion(stock.symbol)"
+                        class="ticker-item flex items-center gap-2 px-6 border-r border-slate-800 cursor-pointer hover:bg-slate-800/80 transition-colors">
                         <span class="font-bold text-slate-200 text-sm">{{ stock.symbol }}</span>
                         <span class="font-mono text-xs font-bold"
                             :class="stock.pchange >= 0 ? 'text-emerald-400' : 'text-rose-400'">
@@ -287,7 +289,8 @@
                 <!-- Reverse direction or slightly different speed if desired, keeping same for now -->
                 <div class="ticker h-full flex items-center">
                     <div v-for="stock in marketData.nasdaq" :key="stock.symbol"
-                        class="ticker-item flex items-center gap-2 px-6 border-r border-slate-800">
+                        @click="selectSuggestion(stock.symbol)"
+                        class="ticker-item flex items-center gap-2 px-6 border-r border-slate-800 cursor-pointer hover:bg-slate-800/80 transition-colors">
                         <span class="font-bold text-slate-200 text-sm">{{ stock.symbol }}</span>
                         <span class="font-mono text-xs font-bold"
                             :class="stock.pchange >= 0 ? 'text-emerald-400' : 'text-rose-400'">
@@ -295,7 +298,8 @@
                         </span>
                     </div>
                     <div v-for="stock in marketData.nasdaq" :key="'dup'+stock.symbol"
-                        class="ticker-item flex items-center gap-2 px-6 border-r border-slate-800">
+                        @click="selectSuggestion(stock.symbol)"
+                        class="ticker-item flex items-center gap-2 px-6 border-r border-slate-800 cursor-pointer hover:bg-slate-800/80 transition-colors">
                         <span class="font-bold text-slate-200 text-sm">{{ stock.symbol }}</span>
                         <span class="font-mono text-xs font-bold"
                             :class="stock.pchange >= 0 ? 'text-emerald-400' : 'text-rose-400'">
@@ -608,65 +612,112 @@
 
                             <!-- Trading Plan Tab -->
                             <div v-show="activeTab === 'trading_plan'" class="animate-fade-in h-full">
+                                <!-- Loading State -->
                                 <div v-if="loadingEntryPlan" class="text-center text-slate-400 py-20">
                                     <i class="fa-solid fa-circle-notch fa-spin text-4xl text-blue-500 mb-4"></i>
-                                    <p class="font-medium">Analyzing optimal setup points...</p>
+                                    <p class="font-medium text-slate-300">Menghitung Trading Plan (Support, Resisten & Fibonacci)...</p>
                                 </div>
+
+                                <!-- Error State with Retry Button -->
                                 <div v-else-if="entryPlan && entryPlan.error" class="max-w-2xl mx-auto space-y-6 mt-4">
-                                    <div class="bg-rose-500/10 border border-rose-500/20 text-rose-400 p-4 rounded-xl">
-                                        <p class="font-bold mb-2">Error Detail:</p>
-                                        <pre class="text-xs overflow-auto whitespace-pre-wrap">{{ entryPlan.traceback }}</pre>
-                                        <p v-if="entryPlan.from_fetch" class="mt-2 text-xs opacity-70">Note: This error originated from the network or frontend fetch timeout.</p>
+                                    <div class="bg-rose-500/10 border border-rose-500/20 text-rose-400 p-5 rounded-xl shadow-lg">
+                                        <div class="flex items-center justify-between mb-2">
+                                            <p class="font-bold flex items-center gap-2">
+                                                <i class="fa-solid fa-triangle-exclamation"></i>
+                                                Gagal Menghitung Trading Plan
+                                            </p>
+                                            <button @click="fetchEntryPlan(currentStock)" class="px-3 py-1 bg-rose-600 hover:bg-rose-500 text-white rounded text-xs font-bold transition-all shadow-sm">
+                                                <i class="fa-solid fa-rotate-right mr-1"></i> Coba Lagi
+                                            </button>
+                                        </div>
+                                        <pre class="text-xs overflow-auto whitespace-pre-wrap bg-slate-900/60 p-3 rounded-lg border border-rose-500/10">{{ entryPlan.traceback || entryPlan.error }}</pre>
+                                        <p v-if="entryPlan.from_fetch" class="mt-2 text-xs opacity-70">Koneksi jaringan sempat terputus atau backend sedang memproses data.</p>
                                     </div>
                                 </div>
+
+                                <!-- Successful Trading Plan Display -->
                                 <div v-else-if="entryPlan && entryPlan.status" class="max-w-2xl mx-auto space-y-6 mt-4">
                                     <!-- Status Banner -->
-                                    <div :class="`border-${entryPlan.color}-500/50 bg-${entryPlan.color}-500/10 text-${entryPlan.color}-400`" class="border-l-4 rounded-xl p-6 shadow-sm">
+                                    <div :class="{
+                                            'border-rose-500 bg-rose-500/10 text-rose-400': entryPlan.color === 'rose',
+                                            'border-emerald-500 bg-emerald-500/10 text-emerald-400': entryPlan.color === 'emerald',
+                                            'border-teal-500 bg-teal-500/10 text-teal-400': entryPlan.color === 'teal',
+                                            'border-amber-500 bg-amber-500/10 text-amber-400': entryPlan.color === 'amber',
+                                            'border-slate-500 bg-slate-500/10 text-slate-300': !entryPlan.color || entryPlan.color === 'slate'
+                                        }" class="border-l-4 rounded-xl p-6 shadow-sm backdrop-blur">
                                         <div class="flex items-start gap-4">
-                                            <i v-if="entryPlan.status.includes('RISK')" class="fa-solid fa-triangle-exclamation text-3xl mt-1"></i>
-                                            <i v-else-if="entryPlan.status.includes('GOOD') || entryPlan.status.includes('GREAT')" class="fa-solid fa-check-circle text-3xl mt-1"></i>
-                                            <i v-else class="fa-solid fa-circle-info text-3xl mt-1"></i>
+                                            <i v-if="entryPlan.status.includes('RISK')" class="fa-solid fa-triangle-exclamation text-3xl mt-1 text-rose-400"></i>
+                                            <i v-else-if="entryPlan.status.includes('GOOD') || entryPlan.status.includes('GREAT')" class="fa-solid fa-circle-check text-3xl mt-1 text-emerald-400"></i>
+                                            <i v-else class="fa-solid fa-circle-info text-3xl mt-1 text-amber-400"></i>
                                             
-                                            <div>
-                                                <h3 class="text-lg font-black tracking-wider uppercase mb-1">{{ entryPlan.status }}</h3>
+                                            <div class="flex-1">
+                                                <div class="flex items-center justify-between">
+                                                    <h3 class="text-lg font-black tracking-wider uppercase mb-1">{{ entryPlan.status }}</h3>
+                                                    <button @click="fetchEntryPlan(currentStock)" title="Hitung ulang analisa" class="text-xs opacity-60 hover:opacity-100 transition-opacity">
+                                                        <i class="fa-solid fa-rotate-right"></i>
+                                                    </button>
+                                                </div>
                                                 <p class="text-sm font-medium opacity-90 leading-relaxed text-slate-300">{{ entryPlan.reason }}</p>
+
+                                                <!-- Candlestick Patterns Detected -->
+                                                <div v-if="entryPlan.patterns && entryPlan.patterns.length" class="mt-3 flex flex-wrap gap-2">
+                                                    <span v-for="p in entryPlan.patterns" :key="p" class="px-2 py-0.5 rounded text-[11px] font-bold bg-slate-900/80 text-cyan-300 border border-cyan-500/30">
+                                                        <i class="fa-solid fa-shapes mr-1"></i>{{ p }}
+                                                    </span>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
                                     
+                                    <!-- Price and RR Ratio Cards -->
                                     <div class="grid grid-cols-2 gap-4">
-                                        <div class="bg-slate-800/50 border border-slate-700 rounded-xl p-5 text-center">
+                                        <div class="bg-slate-800/50 border border-slate-700 rounded-xl p-5 text-center shadow-inner">
                                             <p class="text-[10px] text-slate-500 uppercase font-bold tracking-widest mb-1">Current Price (Entry)</p>
                                             <p class="text-2xl font-mono font-black text-white">{{ formatNumber(entryPlan.current_price) }}</p>
                                         </div>
-                                        <div class="bg-slate-800/50 border border-slate-700 rounded-xl p-5 text-center">
-                                            <p class="text-[10px] text-slate-500 uppercase font-bold tracking-widest mb-1">Risk/Reward Ratio</p>
+                                        <div class="bg-slate-800/50 border border-slate-700 rounded-xl p-5 text-center shadow-inner">
+                                            <p class="text-[10px] text-slate-500 uppercase font-bold tracking-widest mb-1">Risk / Reward Ratio</p>
                                             <p class="text-2xl font-mono font-black" :class="entryPlan.rr_ratio >= 1.5 ? 'text-emerald-400' : 'text-amber-400'">{{ entryPlan.rr_ratio }}x</p>
                                         </div>
                                     </div>
                                     
+                                    <!-- Take Profit and Stop Loss -->
                                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                         <!-- TP List -->
-                                        <div class="bg-slate-800/50 border border-slate-700 rounded-xl p-5">
-                                            <p class="text-[10px] text-slate-500 uppercase font-bold tracking-widest mb-3 text-center">Take Profit Targets</p>
+                                        <div class="bg-slate-800/50 border border-slate-700 rounded-xl p-5 shadow-sm">
+                                            <p class="text-[10px] text-slate-400 uppercase font-bold tracking-widest mb-3 text-center flex items-center justify-center gap-1.5">
+                                                <i class="fa-solid fa-bullseye text-emerald-400"></i> Target Take Profit (TP)
+                                            </p>
                                             <div class="space-y-2">
-                                                <div v-for="(tp, idx) in entryPlan.targets.tp_list" :key="idx" class="flex justify-between items-center bg-slate-900/50 py-2 px-4 rounded border border-slate-700/50">
+                                                <div v-for="(tp, idx) in (entryPlan.targets && entryPlan.targets.tp_list ? entryPlan.targets.tp_list : [])" :key="idx" class="flex justify-between items-center bg-slate-900/60 py-2.5 px-4 rounded-lg border border-slate-700/50 hover:border-emerald-500/30 transition-colors">
                                                     <span class="text-xs font-bold text-slate-400">TP {{ idx + 1 }}</span>
-                                                    <span class="font-mono font-bold text-emerald-400">{{ formatNumber(tp) }}</span>
+                                                    <span class="font-mono font-bold text-emerald-400 text-sm">{{ formatNumber(tp) }}</span>
                                                 </div>
                                             </div>
                                         </div>
                                         <!-- CL -->
-                                        <div class="bg-slate-800/50 border border-slate-700 rounded-xl p-5 flex flex-col justify-center">
-                                            <p class="text-[10px] text-slate-500 uppercase font-bold tracking-widest mb-3 text-center">Max Stop Loss</p>
-                                            <div class="bg-rose-500/10 border border-rose-500/20 rounded-lg flex items-center justify-center p-6 mt-auto mb-auto">
-                                                <span class="font-mono font-black text-3xl text-rose-400">{{ formatNumber(entryPlan.targets.cl) }}</span>
+                                        <div class="bg-slate-800/50 border border-slate-700 rounded-xl p-5 flex flex-col justify-center shadow-sm">
+                                            <p class="text-[10px] text-slate-400 uppercase font-bold tracking-widest mb-3 text-center flex items-center justify-center gap-1.5">
+                                                <i class="fa-solid fa-shield-halved text-rose-400"></i> Batas Cut Loss (SL)
+                                            </p>
+                                            <div class="bg-rose-500/10 border border-rose-500/20 rounded-xl flex flex-col items-center justify-center p-6 mt-auto mb-auto">
+                                                <span class="font-mono font-black text-3xl text-rose-400">{{ formatNumber(entryPlan.targets ? entryPlan.targets.cl : 0) }}</span>
+                                                <span class="text-[10px] text-slate-400 mt-1 uppercase font-semibold">Toleransi Resiko Proteksi Modal</span>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
-                                <div v-else class="text-center text-slate-500 py-10 text-sm">
-                                    Trading Plan data is not available.
+
+                                <!-- Empty / Not Loaded Fallback -->
+                                <div v-else class="text-center text-slate-400 py-16 text-sm">
+                                    <div class="w-16 h-16 rounded-full bg-slate-800 flex items-center justify-center mx-auto mb-4 border border-slate-700">
+                                        <i class="fa-solid fa-bullseye text-2xl text-blue-400"></i>
+                                    </div>
+                                    <p class="text-base font-bold text-slate-200 mb-1">Trading Plan Belum Tersedia</p>
+                                    <p class="text-xs text-slate-400 max-w-sm mx-auto mb-4">Analisa teknikal komprehensif siap dikalkulasi untuk emiten ini.</p>
+                                    <button @click="fetchEntryPlan(currentStock)" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition-all shadow-lg shadow-blue-500/20 inline-flex items-center gap-2">
+                                        <i class="fa-solid fa-calculator"></i> Kalkulasi Trading Plan Sekarang
+                                    </button>
                                 </div>
                             </div>
 
@@ -772,7 +823,7 @@
     </div>
 
     <!-- App Logic -->
-    <script src="/static/app.js?v=3"></script>
+    <script src="/static/app.js?v=6"></script>
 </body>
 
 </html>
