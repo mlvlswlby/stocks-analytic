@@ -27,16 +27,35 @@ def clean_nans(obj):
         return [clean_nans(v) for v in obj]
     return obj
 
+from starlette.middleware.cors import CORSMiddleware as _CORSMiddleware
+from starlette.types import ASGIApp
+
+class CustomCORSMiddleware(_CORSMiddleware):
+    def __init__(self, app: ASGIApp, *args, **kwargs):
+        super().__init__(app, *args, **kwargs)
+        self.simple_headers["Access-Control-Allow-Private-Network"] = "true"
+        self.preflight_headers["Access-Control-Allow-Private-Network"] = "true"
+        if "Vary" in self.preflight_headers:
+            self.preflight_headers["Vary"] += ", Access-Control-Request-Private-Network"
+        else:
+            self.preflight_headers["Vary"] = "Origin, Access-Control-Request-Private-Network"
+
 app = FastAPI()
 
-# Enable CORS
+# Enable CORS with Private Network Access
 app.add_middleware(
-    CORSMiddleware,
+    CustomCORSMiddleware,
     allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.middleware("http")
+async def add_security_headers(request, call_next):
+    response = await call_next(request)
+    response.headers["Access-Control-Allow-Private-Network"] = "true"
+    return response
 
 # Determine path to static files (frontend folder)
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -56,6 +75,7 @@ def read_root():
         response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
         response.headers["Pragma"] = "no-cache"
         response.headers["Expires"] = "0"
+        response.headers["Access-Control-Allow-Private-Network"] = "true"
         return response
     return {"message": "Frontend not found. API is running."}
 
