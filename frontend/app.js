@@ -1,5 +1,19 @@
+if (typeof Vue === 'undefined') {
+    console.error("Vue library is not available.");
+    const splash = document.getElementById('app-loading');
+    if (splash) {
+        splash.innerHTML = `
+            <div class="text-center p-8 bg-slate-800 rounded-2xl border border-rose-500/50 max-w-md mx-4 shadow-2xl">
+                <div class="text-5xl mb-4">⚠️</div>
+                <h2 class="text-white font-bold text-xl mb-2">Koneksi CDN Terhambat</h2>
+                <p class="text-slate-300 text-sm mb-6 leading-relaxed">Komponen antarmuka pengguna gagal diunduh oleh browser. Silakan muat ulang halaman.</p>
+                <button onclick="window.location.reload(true)" class="px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm font-bold shadow-lg shadow-blue-500/30 transition-all">Muat Ulang Halaman</button>
+            </div>
+        `;
+    }
+}
 
-const { createApp, ref, computed, watch, onMounted, nextTick } = Vue;
+const { createApp, ref, computed, watch, onMounted, nextTick } = window.Vue || Vue || {};
 
 const App = {
     setup() {
@@ -509,6 +523,11 @@ const App = {
 
         onMounted(() => {
             initDashboard();
+            const splash = document.getElementById('app-loading');
+            if (splash) {
+                splash.style.opacity = '0';
+                setTimeout(() => splash.remove(), 350);
+            }
         });
 
 
@@ -556,4 +575,11 @@ const App = {
     }
 };
 
-createApp(App).mount('#app');
+if (typeof createApp === 'function') {
+    createApp(App).mount('#app');
+    const splash = document.getElementById('app-loading');
+    if (splash) {
+        splash.style.opacity = '0';
+        setTimeout(() => splash.remove(), 350);
+    }
+}

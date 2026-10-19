@@ -7,18 +7,38 @@
     <title>Stocks Analytic</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Vue 3 -->
-    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
-    <!-- Chart.js -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Vue 3: Local vendor with CDN fallbacks -->
+    <script src="/static/vue.global.prod.js"></script>
+    <script>
+        if (typeof Vue === 'undefined') {
+            document.write('<script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js"><\/script>');
+        }
+    </script>
+    <script>
+        if (typeof Vue === 'undefined') {
+            document.write('<script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"><\/script>');
+        }
+    </script>
+    <!-- Chart.js: Local vendor with CDN fallback -->
+    <script src="/static/chart.umd.min.js"></script>
+    <script>
+        if (typeof Chart === 'undefined') {
+            document.write('<script src="https://cdn.jsdelivr.net/npm/chart.js"><\/script>');
+        }
+    </script>
+    <!-- Icons with CDN fallback -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+        onerror="this.onerror=null;this.href='https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css';">
     <!-- Custom CSS -->
     <link rel="stylesheet" href="/static/style.css">
     <!-- Favicon: Chart Icon -->
     <link rel="icon"
         href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📈</text></svg>">
     <style>
+        [v-cloak] {
+            display: none !important;
+        }
+
         .suggestions-dropdown {
             position: absolute;
             top: 100%;
@@ -96,7 +116,25 @@
 </head>
 
 <body class="bg-slate-900 text-slate-100 min-h-screen">
-    <div id="app" class="container mx-auto p-4 max-w-7xl">
+    <!-- Loading Screen (Smooth transition until Vue mounts) -->
+    <div id="app-loading"
+        class="fixed inset-0 bg-slate-900 flex flex-col items-center justify-center z-[100] transition-opacity duration-300">
+        <div class="flex items-center gap-3 mb-4">
+            <span class="text-4xl animate-bounce">📈</span>
+            <h1 class="text-3xl md:text-4xl font-black bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-teal-400 to-emerald-400">
+                Stocks Analytic
+            </h1>
+        </div>
+        <div class="flex items-center gap-2.5 text-slate-400 text-sm font-medium">
+            <svg class="animate-spin h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+            </svg>
+            <span>Memuat sistem analitik pasar...</span>
+        </div>
+    </div>
+
+    <div id="app" v-cloak class="container mx-auto p-4 max-w-7xl">
 
         <!-- TOP TICKER: IDX -->
         <div
@@ -882,12 +920,12 @@
                         </div>
                     </div>
                 </div>
-
             </div>
+        </main>
     </div>
 
     <!-- App Logic -->
-    <script src="/static/app.js?v=8"></script>
+    <script src="/static/app.js?v=9"></script>
 </body>
 
 </html>
