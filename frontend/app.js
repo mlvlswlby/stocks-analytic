@@ -272,6 +272,12 @@ const App = {
             }
         };
 
+        const onTradeSimFocus = () => {
+            if (tradeSimSuggestions.value && tradeSimSuggestions.value.length > 0) {
+                showTradeSimSuggestions.value = true;
+            }
+        };
+
         const onTradeSimInput = () => {
             if (tradeSimDebounce.value) clearTimeout(tradeSimDebounce.value);
             const q = tradeSimTicker.value ? tradeSimTicker.value.trim() : '';
@@ -765,6 +771,7 @@ const App = {
             tradeSimSuggestions,
             showTradeSimSuggestions,
             loadingTradeSimSearch,
+            onTradeSimFocus,
             onTradeSimInput,
             selectTradeSimSuggestion,
             // Logo & Ticker helpers
@@ -782,10 +789,25 @@ const App = {
 };
 
 if (typeof createApp === 'function') {
-    createApp(App).mount('#app');
-    const splash = document.getElementById('app-loading');
-    if (splash) {
-        splash.style.opacity = '0';
-        setTimeout(() => splash.remove(), 350);
+    try {
+        const app = createApp(App);
+        app.mount('#app');
+    } catch (err) {
+        console.error("Vue mounting error:", err);
+    } finally {
+        const splash = document.getElementById('app-loading');
+        if (splash) {
+            splash.style.opacity = '0';
+            setTimeout(() => splash.remove(), 350);
+        }
     }
+
+    // Safety fallback: Ensure splash screen is NEVER stuck under any circumstance
+    setTimeout(() => {
+        const splash = document.getElementById('app-loading');
+        if (splash) {
+            splash.style.opacity = '0';
+            setTimeout(() => splash.remove(), 350);
+        }
+    }, 3000);
 }
