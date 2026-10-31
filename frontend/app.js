@@ -4,7 +4,7 @@ if (typeof Vue === 'undefined') {
     if (splash) {
         splash.innerHTML = `
             <div class="text-center p-8 bg-slate-800 rounded-2xl border border-rose-500/50 max-w-md mx-4 shadow-2xl">
-                <div class="text-5xl mb-4">⚠️</div>
+                <div class="text-5xl mb-4">&#9888;&#65039;</div>
                 <h2 class="text-white font-bold text-xl mb-2">Koneksi CDN Terhambat</h2>
                 <p class="text-slate-300 text-sm mb-6 leading-relaxed">Komponen antarmuka pengguna gagal diunduh oleh browser. Silakan muat ulang halaman.</p>
                 <button onclick="window.location.reload(true)" class="px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm font-bold shadow-lg shadow-blue-500/30 transition-all">Muat Ulang Halaman</button>
@@ -14,6 +14,194 @@ if (typeof Vue === 'undefined') {
 }
 
 const { createApp, ref, computed, watch, onMounted, nextTick } = window.Vue || Vue || {};
+
+// Curated High-Resolution Corporate Logos (Vector SVG & 500px Wikimedia transparent PNGs)
+const KNOWN_LOGOS = {
+    // IDX Top Banking & Finance
+    'BBCA': 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5c/Bank_Central_Asia.svg/500px-Bank_Central_Asia.svg.png',
+    'BBRI': 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9a/BRI_2025_%28with_full_name%29.svg/500px-BRI_2025_%28with_full_name%29.svg.png',
+    'BMRI': 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/ad/Bank_Mandiri_logo_2016.svg/500px-Bank_Mandiri_logo_2016.svg.png',
+    'BBNI': 'https://upload.wikimedia.org/wikipedia/en/thumb/5/5a/Bank_Negara_Indonesia_logo.svg/500px-Bank_Negara_Indonesia_logo.svg.png',
+    'BBTN': 'https://unavatar.io/btn.co.id',
+    'BRIS': 'https://unavatar.io/bankbsi.co.id',
+    'ARTO': 'https://unavatar.io/jago.com',
+    'BTPS': 'https://unavatar.io/btpnsyariah.com',
+    'BDMN': 'https://unavatar.io/danamon.co.id',
+    'BNGA': 'https://unavatar.io/cimbniaga.co.id',
+
+    // IDX Telco & Tech
+    'TLKM': 'https://thumb.wikimedia.org/wikipedia/id/thumb/c/c4/Telkom_Indonesia_2013.svg/langid-500px-Telkom_Indonesia_2013.svg.png',
+    'ISAT': 'https://unavatar.io/ioh.co.id',
+    'EXCL': 'https://unavatar.io/xl.co.id',
+    'GOTO': 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/30/GoTo_logo.svg/500px-GoTo_logo.svg.png',
+    'BUKA': 'https://unavatar.io/bukalapak.com',
+    'EMTK': 'https://unavatar.io/emtek.co.id',
+    'TOWR': 'https://unavatar.io/protelindo.net',
+    'TBIG': 'https://unavatar.io/tower-bersama.com',
+
+    // IDX Consumer & Retail
+    'ASII': 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/7b/Astra_International_logo.svg/500px-Astra_International_logo.svg.png',
+    'UNVR': 'https://upload.wikimedia.org/wikipedia/en/thumb/e/e4/Unilever.svg/500px-Unilever.svg.png',
+    'ICBP': 'https://unavatar.io/indofoodcbp.com',
+    'INDF': 'https://unavatar.io/indofood.com',
+    'AMRT': 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/86/Alfamart_logo.svg/500px-Alfamart_logo.svg.png',
+    'MIDI': 'https://unavatar.io/alfamidiku.com',
+    'MYOR': 'https://unavatar.io/mayora.com',
+    'CPIN': 'https://unavatar.io/cp.co.id',
+    'JPFA': 'https://unavatar.io/japfacomfeed.co.id',
+    'KLBF': 'https://unavatar.io/kalbe.co.id',
+    'SIDO': 'https://unavatar.io/sidomuncul.co.id',
+    'ACES': 'https://unavatar.io/aspirasi.co.id',
+    'MAPI': 'https://unavatar.io/map.co.id',
+    'ERAA': 'https://unavatar.io/erajaya.com',
+    'GGRM': 'https://unavatar.io/gudanggaramtbk.com',
+    'HMSP': 'https://unavatar.io/sampoerna.com',
+
+    // IDX Energy, Mining, Commodities
+    'ADRO': 'https://unavatar.io/adaro.com',
+    'PTBA': 'https://unavatar.io/ptba.co.id',
+    'ITMG': 'https://unavatar.io/itmg.co.id',
+    'PGAS': 'https://unavatar.io/pgn.co.id',
+    'ANTM': 'https://unavatar.io/antam.com',
+    'MDKA': 'https://unavatar.io/merdekacoppergold.com',
+    'INCO': 'https://unavatar.io/vale.com',
+    'MEDC': 'https://unavatar.io/medcoenergi.com',
+    'AKRA': 'https://unavatar.io/akr.co.id',
+    'HRUM': 'https://unavatar.io/harumenergy.com',
+    'AALI': 'https://unavatar.io/astra-agro.co.id',
+
+    // IDX Industry, Materials & Property
+    'SMGR': 'https://unavatar.io/sig.id',
+    'INTP': 'https://unavatar.io/indocement.co.id',
+    'UNTR': 'https://unavatar.io/unitedtractors.com',
+    'BRPT': 'https://unavatar.io/barito-pacific.com',
+    'TPIA': 'https://unavatar.io/chandra-asri.com',
+    'INKP': 'https://unavatar.io/app.co.id',
+    'TKIM': 'https://unavatar.io/tjiwikimia.co.id',
+    'CTRA': 'https://unavatar.io/ciputra.com',
+    'BSDE': 'https://unavatar.io/sinarmasland.com',
+    'SMRA': 'https://unavatar.io/summarecon.com',
+    'PWON': 'https://unavatar.io/pakuwonjati.com',
+    'HEAL': 'https://unavatar.io/herminahospitals.com',
+    'MIKA': 'https://unavatar.io/mitrakeluarga.com',
+    'SILO': 'https://unavatar.io/siloamhospitals.com',
+
+    // US Mega-Cap & Popular Global Stocks
+    'AAPL': 'https://s3-symbol-logo.tradingview.com/apple--big.svg',
+    'MSFT': 'https://s3-symbol-logo.tradingview.com/microsoft--big.svg',
+    'NVDA': 'https://s3-symbol-logo.tradingview.com/nvidia--big.svg',
+    'TSLA': 'https://s3-symbol-logo.tradingview.com/tesla--big.svg',
+    'AMZN': 'https://s3-symbol-logo.tradingview.com/amazon--big.svg',
+    'GOOGL': 'https://s3-symbol-logo.tradingview.com/alphabet--big.svg',
+    'GOOG': 'https://s3-symbol-logo.tradingview.com/alphabet--big.svg',
+    'META': 'https://s3-symbol-logo.tradingview.com/meta--big.svg',
+    'NFLX': 'https://s3-symbol-logo.tradingview.com/netflix--big.svg',
+    'AMD': 'https://s3-symbol-logo.tradingview.com/advanced-micro-devices--big.svg',
+    'INTC': 'https://s3-symbol-logo.tradingview.com/intel--big.svg',
+    'ORCL': 'https://s3-symbol-logo.tradingview.com/oracle--big.svg',
+    'CRM': 'https://s3-symbol-logo.tradingview.com/salesforce--big.svg',
+    'ADBE': 'https://s3-symbol-logo.tradingview.com/adobe--big.svg',
+    'PYPL': 'https://s3-symbol-logo.tradingview.com/paypal--big.svg',
+    'UBER': 'https://s3-symbol-logo.tradingview.com/uber--big.svg',
+    'COIN': 'https://s3-symbol-logo.tradingview.com/coinbase--big.svg',
+    'PLTR': 'https://s3-symbol-logo.tradingview.com/palantir--big.svg'
+};
+
+const KNOWN_IDX_LIST = [
+    'BBCA', 'BBRI', 'BMRI', 'BBNI', 'TLKM', 'ASII', 'UNVR', 'GOTO', 'ICBP', 'INDF',
+    'ADRO', 'PTBA', 'ITMG', 'PGAS', 'ANTM', 'MDKA', 'INKP', 'TKIM', 'KLBF', 'SMGR',
+    'INTP', 'BRPT', 'TPIA', 'AMRT', 'MIDI', 'HMSP', 'GGRM', 'CPIN', 'JPFA', 'TOWR',
+    'EXCL', 'ISAT', 'UNTR', 'HEXA', 'MEDC', 'AKRA', 'ARTO', 'BUKA', 'EMTK', 'BBTN',
+    'BRIS', 'ACES', 'MAPI', 'MYOR', 'ERAA', 'SIDO', 'HEAL', 'MIKA', 'SILO', 'CTRA',
+    'BSDE', 'SMRA', 'PWON', 'MNCN', 'SCMA', 'AALI', 'HRUM', 'BTPS', 'BDMN', 'BNGA'
+];
+
+const cleanTicker = (sym) => {
+    if (!sym) return '';
+    return String(sym).trim().toUpperCase().replace(/\.JK$/i, '');
+};
+
+const isIdx = (sym) => {
+    if (!sym) return false;
+    const str = String(sym).toUpperCase();
+    return str.endsWith('.JK') || str.endsWith('.ID') || KNOWN_IDX_LIST.includes(cleanTicker(str));
+};
+
+// Generates an ultra-crisp, modern corporate gradient vector SVG
+const generateSvgLogo = (symbol, name = '') => {
+    const clean = cleanTicker(symbol) || 'STK';
+    const palettes = [
+        ['#2563eb', '#1d4ed8', '#60a5fa'], // Sapphire Blue
+        ['#059669', '#047857', '#34d399'], // Emerald Green
+        ['#7c3aed', '#6d28d9', '#a78bfa'], // Royal Violet
+        ['#d97706', '#b45309', '#fbbf24'], // Amber Gold
+        ['#e11d48', '#be123c', '#fb7185'], // Crimson
+        ['#0891b2', '#0e7490', '#22d3ee'], // Cyan / Teal
+        ['#4f46e5', '#4338ca', '#818cf8']  // Indigo
+    ];
+    let hash = 0;
+    for (let i = 0; i < clean.length; i++) hash = clean.charCodeAt(i) + ((hash << 5) - hash);
+    const [c1, c2, accent] = palettes[Math.abs(hash) % palettes.length];
+    const fontSize = clean.length <= 4 ? '42' : '32';
+
+    const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+        <defs>
+            <linearGradient id="g_${clean}" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="${c1}" />
+                <stop offset="100%" stop-color="${c2}" />
+            </linearGradient>
+        </defs>
+        <rect width="128" height="128" rx="28" fill="url(#g_${clean})" />
+        <circle cx="64" cy="64" r="54" fill="none" stroke="${accent}" stroke-width="2.5" stroke-opacity="0.35" />
+        <text x="64" y="64" dy=".35em" fill="#ffffff" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-weight="900" font-size="${fontSize}" text-anchor="middle" letter-spacing="1">${clean}</text>
+    </svg>`.trim();
+
+    return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
+};
+
+const getCompanyLogo = (symbol, item = {}) => {
+    if (!symbol) return generateSvgLogo('STK');
+    const clean = cleanTicker(symbol);
+
+    if (KNOWN_LOGOS[clean]) return KNOWN_LOGOS[clean];
+    if (item.logo_url && typeof item.logo_url === 'string' && item.logo_url.startsWith('http')) {
+        return item.logo_url;
+    }
+    if (item.domain || item.website) {
+        const dom = item.domain || (item.website ? item.website.replace(/^https?:\/\//i, '').split('/')[0] : '');
+        if (dom) return `https://unavatar.io/${dom}`;
+    }
+    if (!isIdx(symbol)) {
+        return `https://s3-symbol-logo.tradingview.com/${clean.toLowerCase()}--big.svg`;
+    }
+    return generateSvgLogo(clean, item.name);
+};
+
+const getDetailLogo = (details) => {
+    if (!details) return generateSvgLogo('STK');
+    const clean = cleanTicker(details.symbol);
+
+    if (KNOWN_LOGOS[clean]) return KNOWN_LOGOS[clean];
+    if (details.logo_url && typeof details.logo_url === 'string' && details.logo_url.startsWith('http')) {
+        return details.logo_url;
+    }
+    if (details.domain) {
+        return `https://unavatar.io/${details.domain}`;
+    }
+    if (!isIdx(details.symbol)) {
+        return `https://s3-symbol-logo.tradingview.com/${clean.toLowerCase()}--big.svg`;
+    }
+    return generateSvgLogo(clean, details.name);
+};
+
+const handleLogoError = (event, symbol) => {
+    if (!event || !event.target) return;
+    const img = event.target;
+    if (img.dataset.failed) return;
+    img.dataset.failed = "true";
+    img.src = generateSvgLogo(symbol);
+};
 
 const App = {
     setup() {
@@ -31,15 +219,19 @@ const App = {
         const loading = ref(false);
         const error = ref(null);
         const activeTab = ref('chart');
-        const activeTimeframe = ref('1y'); // Track active timeframe
+        const activeTimeframe = ref('1y');
 
-        // Trade Sim State
+        // Trade Sim (Analyze My Position) State
         const showTradeSim = ref(false);
         const tradeSimTicker = ref('');
         const tradeSimPrice = ref(null);
         const loadingTradeSim = ref(false);
         const tradePlan = ref(null);
-        
+        const tradeSimSuggestions = ref([]);
+        const showTradeSimSuggestions = ref(false);
+        const loadingTradeSimSearch = ref(false);
+        const tradeSimDebounce = ref(null);
+
         // Entry Plan Tab State
         const entryPlan = ref(null);
         const loadingEntryPlan = ref(false);
@@ -59,14 +251,12 @@ const App = {
         const forecastChartCanvas = ref(null);
         const seasonalChartCanvas = ref(null);
 
-        // Konfigurasi API Base URL
-        // Karena Backend & Frontend di-deploy menyatu di Hugging Face, biarkan kosong "".
         const API_BASE_URL = "";
 
         // API Helper
         const fetchAPI = async (endpoint) => {
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 20000); // 20s timeout
+            const timeoutId = setTimeout(() => controller.abort(), 20000);
 
             try {
                 const url = API_BASE_URL ? `${API_BASE_URL}/api/${endpoint}` : `/api/${endpoint}`;
@@ -82,16 +272,44 @@ const App = {
             }
         };
 
+        const onTradeSimInput = () => {
+            if (tradeSimDebounce.value) clearTimeout(tradeSimDebounce.value);
+            const q = tradeSimTicker.value ? tradeSimTicker.value.trim() : '';
+            if (q.length < 1) {
+                tradeSimSuggestions.value = [];
+                showTradeSimSuggestions.value = false;
+                return;
+            }
+            loadingTradeSimSearch.value = true;
+            tradeSimDebounce.value = setTimeout(async () => {
+                try {
+                    const data = await fetchAPI(`search?q=${encodeURIComponent(q)}`);
+                    tradeSimSuggestions.value = data.results || [];
+                    showTradeSimSuggestions.value = true;
+                } catch (e) {
+                    console.error("Trade Sim search error", e);
+                } finally {
+                    loadingTradeSimSearch.value = false;
+                }
+            }, 300);
+        };
+
+        const selectTradeSimSuggestion = (item) => {
+            tradeSimTicker.value = cleanTicker(item.display_symbol || item.symbol);
+            showTradeSimSuggestions.value = false;
+        };
+
         const analyzeTrade = async () => {
             if (!tradeSimTicker.value || !tradeSimPrice.value) return;
 
             loadingTradeSim.value = true;
             tradePlan.value = null;
+            showTradeSimSuggestions.value = false;
 
             try {
-                const ticker = tradeSimTicker.value.toUpperCase();
+                const ticker = tradeSimTicker.value.trim().toUpperCase();
                 const price = tradeSimPrice.value;
-                const plan = await fetchAPI(`analyze-trade?ticker=${ticker}&avg_price=${price}`);
+                const plan = await fetchAPI(`analyze-trade?ticker=${encodeURIComponent(ticker)}&avg_price=${price}`);
                 tradePlan.value = plan;
             } catch (e) {
                 console.error("Trade Sim Error", e);
@@ -102,9 +320,9 @@ const App = {
         };
 
         const onSearchInput = () => {
-            // ... (keep existing)
             if (searchDebounce.value) clearTimeout(searchDebounce.value);
-            if (searchQuery.value.length < 1) {
+            const q = searchQuery.value ? searchQuery.value.trim() : '';
+            if (q.length < 1) {
                 searchResults.value = [];
                 showSuggestions.value = false;
                 return;
@@ -113,21 +331,19 @@ const App = {
             loadingSearch.value = true;
             searchDebounce.value = setTimeout(async () => {
                 try {
-                    const data = await fetchAPI(`search?q=${searchQuery.value}`);
-                    searchResults.value = data.results;
+                    const data = await fetchAPI(`search?q=${encodeURIComponent(q)}`);
+                    searchResults.value = data.results || [];
                     showSuggestions.value = true;
                 } catch (e) {
                     console.error("Search failed", e);
                 } finally {
                     loadingSearch.value = false;
                 }
-            }, 500); // 500ms debounce
+            }, 350);
         };
 
-
-
         const selectSuggestion = (symbol) => {
-            searchQuery.value = symbol;
+            searchQuery.value = cleanTicker(symbol);
             showSuggestions.value = false;
             loadStock(symbol);
         };
@@ -137,7 +353,6 @@ const App = {
                 const tech = await fetchAPI(`stock/${ticker}/technicals`);
                 return { symbol: ticker, ...tech };
             } catch (e) {
-                // Return placeholder
                 return null;
             }
         };
@@ -153,20 +368,19 @@ const App = {
                 await new Promise(r => setTimeout(r, 500));
             }
             targetRef.value = results.sort((a, b) => {
-                // Custom Priority: Buy > Neutral > Sell
                 const getPriority = (rec) => {
                     if (rec.includes('STRONG BUY')) return 5;
                     if (rec.includes('BUY')) return 4;
                     if (rec.includes('NEUTRAL')) return 3;
-                    if (rec.includes('SELL')) return 2; // Sell
-                    return 1; // Strong Sell
+                    if (rec.includes('SELL')) return 2;
+                    return 1;
                 };
 
                 const prioA = getPriority(a.recommendation);
                 const prioB = getPriority(b.recommendation);
 
-                if (prioA !== prioB) return prioB - prioA; // Descending Priority
-                return b.score - a.score; // Tie-break with Score
+                if (prioA !== prioB) return prioB - prioA;
+                return b.score - a.score;
             });
         };
 
@@ -188,8 +402,8 @@ const App = {
 
         // Actions
         const handleSearch = () => {
-            if (searchQuery.value.length < 1) return;
-            selectSuggestion(searchQuery.value.toUpperCase());
+            if (!searchQuery.value || searchQuery.value.trim().length < 1) return;
+            selectSuggestion(searchQuery.value.trim().toUpperCase());
         };
 
         const goBack = () => {
@@ -198,21 +412,18 @@ const App = {
             searchQuery.value = '';
             showSuggestions.value = false;
             activeTab.value = 'chart';
-            if (chartInstance) {
-                chartInstance.remove();
-                chartInstance = null;
-            }
         };
 
         const loadStock = async (ticker) => {
             loading.value = true;
             error.value = null;
             currentStock.value = ticker;
+            searchQuery.value = cleanTicker(ticker);
             stockDetails.value = null;
             technicals.value = null;
             fundamentals.value = null;
             entryPlan.value = null;
-            activeTimeframe.value = '1y'; // Reset timeframe on new stock
+            activeTimeframe.value = '1y';
 
             // Destroy old charts
             if (mainChart) { mainChart.destroy(); mainChart = null; }
@@ -232,7 +443,6 @@ const App = {
                 fundamentals.value = fund;
                 stockDetails.value.chartData = chartData;
 
-                // Fetch extra data for tabs asynchronously (non-blocking)
                 loadingEntryPlan.value = true;
                 Promise.all([
                     fetchAPI(`stock/${ticker}/forecast`).catch(() => null),
@@ -246,7 +456,6 @@ const App = {
                         }
                         entryPlan.value = entry;
                         
-                        // If user is already on the tab, render immediately
                         if (activeTab.value === 'forecasting') setTimeout(() => renderForecastChart(chartData, forecast), 50);
                         if (activeTab.value === 'seasonal') setTimeout(() => renderSeasonalChart(seasonal), 50);
                     }
@@ -276,7 +485,7 @@ const App = {
 
         const changeTimeframe = async (range) => {
             if (!currentStock.value) return;
-            activeTimeframe.value = range; // Update active state
+            activeTimeframe.value = range;
             try {
                 const data = await fetchAPI(`stock/${currentStock.value}/chart?range=${range}`);
                 if (stockDetails.value) {
@@ -295,7 +504,6 @@ const App = {
             if (newTab === 'seasonal') renderSeasonalChart(stockDetails.value?.seasonalData);
         });
 
-        // Chart.js Implementations
         const renderMainChart = (data) => {
             if (!mainChartCanvas.value || !data) return;
             if (mainChart) mainChart.destroy();
@@ -304,9 +512,8 @@ const App = {
             const dates = data.map(d => d.time);
             const prices = data.map(d => d.close);
 
-            // Create Gradient
             const gradient = ctx.createLinearGradient(0, 0, 0, 400);
-            gradient.addColorStop(0, 'rgba(59, 130, 246, 0.5)'); // Blue
+            gradient.addColorStop(0, 'rgba(59, 130, 246, 0.5)');
             gradient.addColorStop(1, 'rgba(59, 130, 246, 0.0)');
 
             mainChart = new Chart(ctx, {
@@ -345,27 +552,19 @@ const App = {
             if (!forecastChartCanvas.value || !history || !forecast) return;
             if (forecastChart) forecastChart.destroy();
 
-            // Check if history is valid
             if (!history || history.length === 0) return;
 
-            const histData = history.map(d => d.close).slice(-60); // Last 60 points
+            const histData = history.map(d => d.close).slice(-60);
             const histLabels = history.map(d => d.time).slice(-60);
 
-            // Forecast data
             const forecastValues = forecast.map(d => d.value);
             const forecastLabels = forecast.map(d => d.time);
-
-            // Connect: The forecast line typically starts from the last history point
-            // We can pad the forecast dataset with nulls for the history period
-            // Or just concat the labels and have two datasets
 
             const labels = [...histLabels, ...forecastLabels];
             const dataset1 = [...histData, ...new Array(forecastValues.length).fill(null)];
 
-            // Dataset 2 needs to start at the last point of dataset 1 for continuity
-            // Let's create a null-padded array for dataset 2
             const dataset2 = new Array(histData.length - 1).fill(null);
-            dataset2.push(histData[histData.length - 1]); // Connection point
+            dataset2.push(histData[histData.length - 1]);
             dataset2.push(...forecastValues);
 
             const ctx = forecastChartCanvas.value.getContext('2d');
@@ -413,11 +612,10 @@ const App = {
             const keys = Object.keys(seasonalData).sort().reverse();
             if (keys.length === 0) return;
 
-            // Use longest dataset for labels
             const longestKey = keys.reduce((a, b) => seasonalData[a].length > seasonalData[b].length ? a : b);
             const labels = seasonalData[longestKey].map(d => d.label);
 
-            const colors = ['#3b82f6', '#10b981', '#f59e0b']; // Blue, Green, Amber
+            const colors = ['#3b82f6', '#10b981', '#f59e0b'];
 
             const datasets = keys.map((year, idx) => ({
                 label: year,
@@ -452,16 +650,14 @@ const App = {
         const formatNumber = (num, symbol) => {
             if (num === null || num === undefined) return '-';
 
-            // Special handling for Indonesia
-            if (currentStock.value && (currentStock.value.endsWith('.JK') || currentStock.value.endsWith('.ID'))) {
-                // Manual format for " Rp." request
+            const s = symbol || currentStock.value || tradeSimTicker.value;
+            if (s && isIdx(s)) {
                 return ' Rp. ' + new Intl.NumberFormat('id-ID', {
                     minimumFractionDigits: 0,
                     maximumFractionDigits: 0
                 }).format(num);
             }
 
-            // Default USD
             return new Intl.NumberFormat('en-US', {
                 style: 'currency',
                 currency: 'USD',
@@ -482,7 +678,7 @@ const App = {
             if (score >= 60) return 'text-green-400';
             if (score <= 20) return 'text-rose-500 font-black';
             if (score <= 40) return 'text-red-400';
-            return 'text-gray-500 font-medium'; // Neutral - Distinct Gray
+            return 'text-gray-500 font-medium';
         };
 
         const recommendationClass = computed(() => {
@@ -492,7 +688,7 @@ const App = {
             if (rec.includes('BUY')) return 'text-green-400';
             if (rec.includes('STRONG SELL')) return 'text-rose-500 font-black';
             if (rec.includes('SELL')) return 'text-red-400';
-            return 'text-gray-500 font-bold'; // Neutral
+            return 'text-gray-500 font-bold';
         });
 
         const fetchEntryPlan = async (ticker = currentStock.value) => {
@@ -530,7 +726,6 @@ const App = {
             }
         });
 
-
         return {
             searchQuery,
             searchResults,
@@ -567,6 +762,17 @@ const App = {
             loadingTradeSim,
             tradePlan,
             analyzeTrade,
+            tradeSimSuggestions,
+            showTradeSimSuggestions,
+            loadingTradeSimSearch,
+            onTradeSimInput,
+            selectTradeSimSuggestion,
+            // Logo & Ticker helpers
+            cleanTicker,
+            isIdx,
+            getCompanyLogo,
+            getDetailLogo,
+            handleLogoError,
             // Entry Plan Tab (Trading Plan)
             entryPlan,
             loadingEntryPlan,

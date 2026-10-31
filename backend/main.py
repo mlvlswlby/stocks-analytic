@@ -101,56 +101,239 @@ async def favicon():
 
 import requests
 
+# Curated High-Resolution Corporate Logos (SVG & 500px Wikimedia transparent PNGs)
+KNOWN_LOGOS = {
+    # IDX Top Banking & Finance
+    "BBCA": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5c/Bank_Central_Asia.svg/500px-Bank_Central_Asia.svg.png",
+    "BBRI": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9a/BRI_2025_%28with_full_name%29.svg/500px-BRI_2025_%28with_full_name%29.svg.png",
+    "BMRI": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ad/Bank_Mandiri_logo_2016.svg/500px-Bank_Mandiri_logo_2016.svg.png",
+    "BBNI": "https://upload.wikimedia.org/wikipedia/en/thumb/5/5a/Bank_Negara_Indonesia_logo.svg/500px-Bank_Negara_Indonesia_logo.svg.png",
+    "BBTN": "https://unavatar.io/btn.co.id",
+    "BRIS": "https://unavatar.io/bankbsi.co.id",
+    "ARTO": "https://unavatar.io/jago.com",
+    "BTPS": "https://unavatar.io/btpnsyariah.com",
+    "BDMN": "https://unavatar.io/danamon.co.id",
+    "BNGA": "https://unavatar.io/cimbniaga.co.id",
+
+    # IDX Telco & Tech
+    "TLKM": "https://thumb.wikimedia.org/wikipedia/id/thumb/c/c4/Telkom_Indonesia_2013.svg/langid-500px-Telkom_Indonesia_2013.svg.png",
+    "ISAT": "https://unavatar.io/ioh.co.id",
+    "EXCL": "https://unavatar.io/xl.co.id",
+    "GOTO": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/30/GoTo_logo.svg/500px-GoTo_logo.svg.png",
+    "BUKA": "https://unavatar.io/bukalapak.com",
+    "EMTK": "https://unavatar.io/emtek.co.id",
+    "TOWR": "https://unavatar.io/protelindo.net",
+    "TBIG": "https://unavatar.io/tower-bersama.com",
+
+    # IDX Consumer & Retail
+    "ASII": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7b/Astra_International_logo.svg/500px-Astra_International_logo.svg.png",
+    "UNVR": "https://upload.wikimedia.org/wikipedia/en/thumb/e/e4/Unilever.svg/500px-Unilever.svg.png",
+    "ICBP": "https://unavatar.io/indofoodcbp.com",
+    "INDF": "https://unavatar.io/indofood.com",
+    "AMRT": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/86/Alfamart_logo.svg/500px-Alfamart_logo.svg.png",
+    "MIDI": "https://unavatar.io/alfamidiku.com",
+    "MYOR": "https://unavatar.io/mayora.com",
+    "CPIN": "https://unavatar.io/cp.co.id",
+    "JPFA": "https://unavatar.io/japfacomfeed.co.id",
+    "KLBF": "https://unavatar.io/kalbe.co.id",
+    "SIDO": "https://unavatar.io/sidomuncul.co.id",
+    "ACES": "https://unavatar.io/aspirasi.co.id",
+    "MAPI": "https://unavatar.io/map.co.id",
+    "ERAA": "https://unavatar.io/erajaya.com",
+    "GGRM": "https://unavatar.io/gudanggaramtbk.com",
+    "HMSP": "https://unavatar.io/sampoerna.com",
+
+    # IDX Energy, Mining, Commodities
+    "ADRO": "https://unavatar.io/adaro.com",
+    "PTBA": "https://unavatar.io/ptba.co.id",
+    "ITMG": "https://unavatar.io/itmg.co.id",
+    "PGAS": "https://unavatar.io/pgn.co.id",
+    "ANTM": "https://unavatar.io/antam.com",
+    "MDKA": "https://unavatar.io/merdekacoppergold.com",
+    "INCO": "https://unavatar.io/vale.com",
+    "MEDC": "https://unavatar.io/medcoenergi.com",
+    "AKRA": "https://unavatar.io/akr.co.id",
+    "HRUM": "https://unavatar.io/harumenergy.com",
+    "AALI": "https://unavatar.io/astra-agro.co.id",
+
+    # IDX Industry, Materials & Property
+    "SMGR": "https://unavatar.io/sig.id",
+    "INTP": "https://unavatar.io/indocement.co.id",
+    "UNTR": "https://unavatar.io/unitedtractors.com",
+    "BRPT": "https://unavatar.io/barito-pacific.com",
+    "TPIA": "https://unavatar.io/chandra-asri.com",
+    "INKP": "https://unavatar.io/app.co.id",
+    "TKIM": "https://unavatar.io/tjiwikimia.co.id",
+    "CTRA": "https://unavatar.io/ciputra.com",
+    "BSDE": "https://unavatar.io/sinarmasland.com",
+    "SMRA": "https://unavatar.io/summarecon.com",
+    "PWON": "https://unavatar.io/pakuwonjati.com",
+    "HEAL": "https://unavatar.io/herminahospitals.com",
+    "MIKA": "https://unavatar.io/mitrakeluarga.com",
+    "SILO": "https://unavatar.io/siloamhospitals.com",
+
+    # US Mega-Cap & Popular Global Stocks
+    "AAPL": "https://s3-symbol-logo.tradingview.com/apple--big.svg",
+    "MSFT": "https://s3-symbol-logo.tradingview.com/microsoft--big.svg",
+    "NVDA": "https://s3-symbol-logo.tradingview.com/nvidia--big.svg",
+    "TSLA": "https://s3-symbol-logo.tradingview.com/tesla--big.svg",
+    "AMZN": "https://s3-symbol-logo.tradingview.com/amazon--big.svg",
+    "GOOGL": "https://s3-symbol-logo.tradingview.com/alphabet--big.svg",
+    "GOOG": "https://s3-symbol-logo.tradingview.com/alphabet--big.svg",
+    "META": "https://s3-symbol-logo.tradingview.com/meta--big.svg",
+    "NFLX": "https://s3-symbol-logo.tradingview.com/netflix--big.svg",
+    "AMD": "https://s3-symbol-logo.tradingview.com/advanced-micro-devices--big.svg",
+    "INTC": "https://s3-symbol-logo.tradingview.com/intel--big.svg",
+    "ORCL": "https://s3-symbol-logo.tradingview.com/oracle--big.svg",
+    "CRM": "https://s3-symbol-logo.tradingview.com/salesforce--big.svg",
+    "ADBE": "https://s3-symbol-logo.tradingview.com/adobe--big.svg",
+    "PYPL": "https://s3-symbol-logo.tradingview.com/paypal--big.svg",
+    "UBER": "https://s3-symbol-logo.tradingview.com/uber--big.svg",
+    "COIN": "https://s3-symbol-logo.tradingview.com/coinbase--big.svg",
+    "PLTR": "https://s3-symbol-logo.tradingview.com/palantir--big.svg"
+}
+
+def get_known_logo(ticker: str) -> str:
+    clean = ticker.upper().replace(".JK", "")
+    if clean in KNOWN_LOGOS:
+        return KNOWN_LOGOS[clean]
+    return ""
+
+# Comprehensive set of Indonesian Stock Exchange (IDX) tickers
+KNOWN_IDX_SYMBOLS = {
+    s["symbol"].replace(".JK", "").upper()
+    for s in STOCKS_DB
+    if s["symbol"].endswith(".JK") or s.get("exchange", "") in ["IDX", "JKT"]
+}
+for _sym in [
+    "BBCA", "BBRI", "BMRI", "BBNI", "TLKM", "ASII", "UNVR", "GOTO", "ICBP", "INDF",
+    "ADRO", "PTBA", "ITMG", "PGAS", "ANTM", "MDKA", "INKP", "TKIM", "KLBF", "SMGR",
+    "INTP", "BRPT", "TPIA", "AMRT", "MIDI", "HMSP", "GGRM", "CPIN", "JPFA", "TOWR",
+    "EXCL", "ISAT", "UNTR", "HEXA", "MEDC", "AKRA", "ARTO", "BUKA", "EMTK", "BBTN",
+    "BRIS", "ACES", "MAPI", "MYOR", "ERAA", "SIDO", "HEAL", "MIKA", "SILO", "CTRA",
+    "BSDE", "SMRA", "PWON", "MNCN", "SCMA", "AALI", "HRUM", "BTPS", "BDMN", "BNGA"
+]:
+    KNOWN_IDX_SYMBOLS.add(_sym)
+
+def normalize_ticker(ticker: str) -> str:
+    """
+    Normalizes user input ticker:
+    - If it's an Indonesian ticker (without .JK), appends .JK for Yahoo Finance
+    - Retains US and international tickers as-is
+    """
+    if not ticker:
+        return ""
+    t = ticker.strip().upper()
+    if t.endswith(".JK"):
+        return t
+    clean = t.replace(".JK", "")
+    if clean in KNOWN_IDX_SYMBOLS:
+        return f"{clean}.JK"
+    if len(clean) == 4 and clean.isalpha():
+        us_match = any(s["symbol"] == clean for s in STOCKS_DB if not s["symbol"].endswith(".JK"))
+        if not us_match:
+            return f"{clean}.JK"
+    return t
+
 @app.get("/api/search")
 def search_stocks(q: str = Query(..., min_length=1)):
     """
-    Autocomplete search using Yahoo Finance API.
+    Autocomplete search prioritizing IDX stocks without JK and returning high-res logos.
     """
     try:
+        q_raw = q.strip()
+        q_clean = q_raw.upper().replace(".JK", "")
+        results = []
+        seen = set()
+
+        # 1. High-priority local IDX & curated search
+        for item in STOCKS_DB:
+            sym = item.get("symbol", "").upper()
+            clean_sym = sym.replace(".JK", "")
+            name = item.get("name", "")
+            is_idx_stock = sym.endswith(".JK") or item.get("exchange", "") in ["IDX", "JKT"]
+            
+            # Match condition
+            if clean_sym.startswith(q_clean) or q_clean in clean_sym or q_clean in name.upper():
+                canonical = f"{clean_sym}.JK" if is_idx_stock else sym
+                display_sym = clean_sym if is_idx_stock else sym
+                exchange = "IDX" if is_idx_stock else item.get("exchange", "EQ")
+                
+                if display_sym not in seen:
+                    seen.add(display_sym)
+                    logo = get_known_logo(display_sym)
+                    results.append({
+                        "symbol": canonical,
+                        "display_symbol": display_sym,
+                        "name": name,
+                        "exchange": exchange,
+                        "logo_url": logo
+                    })
+                    if len(results) >= 8:
+                        break
+
+        # 2. Query Yahoo Finance API for global + additional IDX matches
         url = "https://query2.finance.yahoo.com/v1/finance/search"
         headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
         }
         params = {
-            'q': q,
+            'q': q_raw,
             'quotesCount': 20,
             'newsCount': 0,
             'enableFuzzyQuery': 'false',
             'quotesQueryId': 'tss_match_phrase_query'
         }
         
-        response = requests.get(url, headers=headers, params=params, timeout=5)
-        data = response.json()
-        
-        results = []
-        if 'quotes' in data:
-            for item in data['quotes']:
-                # Filter for equity/etf kind of things generally, or just return everything useful
-                if 'symbol' in item:
-                    # Normalize Exchange Label
-                    symbol = item['symbol']
-                    exch = item.get('exchange', '').upper()
-                    
-                    if symbol.endswith('.JK') or exch == 'JKT':
-                        display_exchange = 'IDX'
-                    elif 'NASDAQ' in exch or exch in ['NMS', 'NGM']:
-                        display_exchange = 'NDX'
-                    elif exch in ['NYQ', 'NYSE']:
-                        display_exchange = 'NYSE'
-                    else:
-                        display_exchange = exch or 'EQ'
+        response = requests.get(url, headers=headers, params=params, timeout=4)
+        if response.ok:
+            data = response.json()
+            if 'quotes' in data:
+                for item in data['quotes']:
+                    if 'symbol' in item:
+                        symbol = item['symbol']
+                        exch = item.get('exchange', '').upper()
+                        
+                        is_idx = symbol.endswith('.JK') or exch == 'JKT' or symbol.replace('.JK', '') in KNOWN_IDX_SYMBOLS
+                        if is_idx:
+                            display_exchange = 'IDX'
+                            display_sym = symbol.replace('.JK', '')
+                            canonical = f"{display_sym}.JK"
+                        elif 'NASDAQ' in exch or exch in ['NMS', 'NGM']:
+                            display_exchange = 'NDX'
+                            display_sym = symbol
+                            canonical = symbol
+                        elif exch in ['NYQ', 'NYSE']:
+                            display_exchange = 'NYSE'
+                            display_sym = symbol
+                            canonical = symbol
+                        else:
+                            display_exchange = exch or 'EQ'
+                            display_sym = symbol
+                            canonical = symbol
 
-                    results.append({
-                        "symbol": symbol,
-                        "name": item.get('longname') or item.get('shortname') or item.get('name', 'N/A'),
-                        "exchange": display_exchange
-                    })
+                        if display_sym not in seen:
+                            seen.add(display_sym)
+                            logo = get_known_logo(display_sym)
+                            results.append({
+                                "symbol": canonical,
+                                "display_symbol": display_sym,
+                                "name": item.get('longname') or item.get('shortname') or item.get('name', 'N/A'),
+                                "exchange": display_exchange,
+                                "logo_url": logo
+                            })
         
+        # Sort so exact ticker match is at the very top
+        results.sort(key=lambda x: (
+            0 if x["display_symbol"] == q_clean else (
+                1 if x["display_symbol"].startswith(q_clean) else 2
+            )
+        ))
+
         return clean_nans({"results": results})
         
     except Exception as e:
         print(f"Search API Error: {e}")
-        # Fallback to empty list or basic echo if API fails
         return clean_nans({"results": []})
 
 TOP_20_CACHE = {"idx": [], "nasdaq": []}
@@ -242,9 +425,18 @@ def get_market_summary():
     return clean_nans(TOP_20_CACHE)
 
 def get_stock_data(ticker: str, period="2y", interval="1d"):
-    stock = yf.Ticker(ticker)
+    norm_ticker = normalize_ticker(ticker)
+    stock = yf.Ticker(norm_ticker)
     df = stock.history(period=period, interval=interval)
     
+    # Fallback for 4-letter Indonesian stocks if not recognized initially
+    if df.empty and not norm_ticker.endswith(".JK") and len(norm_ticker) == 4:
+        alt_ticker = f"{norm_ticker}.JK"
+        alt_stock = yf.Ticker(alt_ticker)
+        alt_df = alt_stock.history(period=period, interval=interval)
+        if not alt_df.empty:
+            return alt_stock, alt_df
+
     if df.empty:
         raise HTTPException(status_code=404, detail="Stock data not found")
         
@@ -356,7 +548,40 @@ KNOWN_PROFILES = {
         "sector": "Utilities",
         "industry": "Utilities - Regulated Gas",
         "description": "PT Perusahaan Gas Negara Tbk (PGN) adalah subholding gas Pertamina yang mengelola jaringan transmisi dan distribusi gas bumi terbesar di Indonesia untuk kebutuhan industri dan rumah tangga.",
-        "website": "https://www.pgn.co.id"
+        "website": "https://www.pgn.co.id",
+        "logo_url": "https://unavatar.io/pgn.co.id"
+    },
+    "AMRT.JK": {
+        "name": "PT Sumber Alfaria Trijaya Tbk",
+        "sector": "Consumer Defensive",
+        "industry": "Grocery Stores",
+        "description": "PT Sumber Alfaria Trijaya Tbk (Alfamart) adalah jaringan minimarket terkemuka dan terbesar di Indonesia yang menyediakan kebutuhan sehari-hari bagi jutaan masyarakat.",
+        "website": "https://www.alfamart.co.id",
+        "logo_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/86/Alfamart_logo.svg/500px-Alfamart_logo.svg.png"
+    },
+    "KLBF.JK": {
+        "name": "PT Kalbe Farma Tbk",
+        "sector": "Healthcare",
+        "industry": "Drug Manufacturers - Specialty & Generic",
+        "description": "PT Kalbe Farma Tbk adalah perusahaan farmasi dan produk kesehatan konsumen terkemuka di Asia Tenggara dengan merek tepercaya di bidang nutrisi dan obat-obatan.",
+        "website": "https://www.kalbe.co.id",
+        "logo_url": "https://unavatar.io/kalbe.co.id"
+    },
+    "UNTR.JK": {
+        "name": "PT United Tractors Tbk",
+        "sector": "Industrials",
+        "industry": "Heavy Machinery & Mining Contracting",
+        "description": "PT United Tractors Tbk adalah distributor alat berat terbesar di Indonesia (Komatsu) sekaligus kontraktor jasa penambangan terkemuka dan penyedia energi bersih.",
+        "website": "https://www.unitedtractors.com",
+        "logo_url": "https://unavatar.io/unitedtractors.com"
+    },
+    "MDKA.JK": {
+        "name": "PT Merdeka Copper Gold Tbk",
+        "sector": "Basic Materials",
+        "industry": "Gold & Copper Mining",
+        "description": "PT Merdeka Copper Gold Tbk adalah perusahaan induk pertambangan logam terkemuka di Indonesia yang memproduksi emas, tembaga, nikel, dan mineral strategis lainnya.",
+        "website": "https://www.merdekacoppergold.com",
+        "logo_url": "https://unavatar.io/merdekacoppergold.com"
     }
 }
 
@@ -441,14 +666,20 @@ def resolve_company_profile(ticker: str, stock, df: pd.DataFrame) -> dict:
 
     domain = website.replace("https://", "").replace("http://", "").split("/")[0] if website else ""
 
+    clean_sym = ticker_upper.replace(".JK", "")
+    final_logo = logo_url or get_known_logo(clean_sym)
+    if not final_logo and domain:
+        final_logo = f"https://unavatar.io/{domain}"
+
     return {
         "symbol": ticker_upper,
+        "display_symbol": clean_sym if ticker_upper.endswith(".JK") else ticker_upper,
         "name": name,
         "price": last_price,
         "sector": sector,
         "industry": industry,
         "description": description,
-        "logo_url": logo_url,
+        "logo_url": final_logo,
         "website": website,
         "domain": domain
     }
