@@ -251,22 +251,14 @@ def calculate_seasonal(df: pd.DataFrame):
             
     return seasonal_data
 
-def is_idx_symbol(ticker: str = None) -> bool:
+def is_idx_symbol(ticker: str = None, is_idx: bool = None) -> bool:
     """Detects whether a ticker belongs to the Indonesian Stock Exchange (IDX)."""
+    if is_idx is not None:
+        return bool(is_idx)
     if not ticker:
         return False
     t = str(ticker).strip().upper()
-    if t.endswith(".JK") or t.endswith(".ID"):
-        return True
-    clean = t.replace(".JK", "")
-    if len(clean) == 4 and clean.isalpha():
-        US_COMMON = {
-            "AAPL", "MSFT", "GOOG", "NVDA", "META", "AMZN", "INTC", "TSLA",
-            "NFLX", "AMD", "QCOM", "AVGO", "CSCO", "PYPL", "ADBE", "CMCSA", "PEP", "COST"
-        }
-        if clean not in US_COMMON:
-            return True
-    return False
+    return t.endswith(".JK") or t.endswith(".ID")
 
 def round_to_market_tick(price: float, is_idx: bool = False) -> float:
     """
@@ -432,7 +424,7 @@ def build_take_profit_levels(resistances: list, current_price: float, s1: float,
     tp_list.sort()
     return tp_list[:5]
 
-def generate_trade_plan(df: pd.DataFrame, avg_price: float, buy_date: str = None, ticker: str = None):
+def generate_trade_plan(df: pd.DataFrame, avg_price: float, buy_date: str = None, ticker: str = None, is_idx: bool = None):
     """
     Generates a trade plan (TP, CL, Action) based on average price and current technicals.
     Uses multi-touch support/resistance clustering and progressive spacing for TP.
@@ -440,7 +432,7 @@ def generate_trade_plan(df: pd.DataFrame, avg_price: float, buy_date: str = None
     if df.empty:
         return {}
 
-    is_idx = is_idx_symbol(ticker)
+    is_idx = is_idx_symbol(ticker, is_idx)
     last = df.iloc[-1]
     current_price = float(last['Close'])
     current_price_clean = round_to_market_tick(current_price, is_idx)
@@ -521,7 +513,7 @@ def generate_trade_plan(df: pd.DataFrame, avg_price: float, buy_date: str = None
         }
     }
 
-def generate_entry_plan(df: pd.DataFrame, ticker: str = None):
+def generate_entry_plan(df: pd.DataFrame, ticker: str = None, is_idx: bool = None):
     """
     Generates a trading plan specifically for BUYING at the current price.
     Purely technical analysis (price action, chart patterns, support/resistance clustering, Fibonacci).
@@ -530,7 +522,7 @@ def generate_entry_plan(df: pd.DataFrame, ticker: str = None):
     if df.empty:
         return {}
 
-    is_idx = is_idx_symbol(ticker)
+    is_idx = is_idx_symbol(ticker, is_idx)
     last = df.iloc[-1]
     current_price = float(last['Close'])
     current_price_clean = round_to_market_tick(current_price, is_idx)

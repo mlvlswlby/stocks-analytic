@@ -97,6 +97,7 @@ const KNOWN_LOGOS = {
     'META': 'https://s3-symbol-logo.tradingview.com/meta--big.svg',
     'NFLX': 'https://s3-symbol-logo.tradingview.com/netflix--big.svg',
     'AMD': 'https://s3-symbol-logo.tradingview.com/advanced-micro-devices--big.svg',
+    'SPCE': 'https://s3-symbol-logo.tradingview.com/virgin-galactic--big.svg',
     'INTC': 'https://s3-symbol-logo.tradingview.com/intel--big.svg',
     'ORCL': 'https://s3-symbol-logo.tradingview.com/oracle--big.svg',
     'CRM': 'https://s3-symbol-logo.tradingview.com/salesforce--big.svg',
@@ -653,6 +654,17 @@ const App = {
             });
         };
 
+        const getGainPct = (target, base) => {
+            if (!target || !base || base <= 0) return '0.0%';
+            const pct = ((target - base) / base) * 100;
+            return (pct >= 0 ? '+' : '') + pct.toFixed(1) + '%';
+        };
+
+        const getLossPct = (target, base) => {
+            if (!target || !base || base <= 0) return '0.0%';
+            const pct = ((target - base) / base) * 100;
+            return pct.toFixed(1) + '%';
+        };
         const formatNumber = (num, symbol) => {
             if (num === null || num === undefined) return '-';
 
@@ -751,6 +763,8 @@ const App = {
             activeTimeframe,
             recommendationClass,
             formatNumber,
+            getGainPct,
+            getLossPct,
             formatCompactNumber,
             marketData,
             loadingMarket,

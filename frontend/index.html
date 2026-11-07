@@ -148,7 +148,7 @@
                     <div v-for="stock in marketData.idx" :key="stock.symbol"
                         @click="selectSuggestion(stock.symbol)"
                         class="ticker-item flex items-center gap-2 px-6 border-r border-slate-800 cursor-pointer hover:bg-slate-800/80 transition-colors">
-                        <span class="font-bold text-slate-200 text-sm">{{ stock.symbol }}</span>
+                        <span class="font-bold text-slate-200 text-sm">{{ cleanTicker(stock.symbol) }}</span>
                         <span class="font-mono text-xs font-bold"
                             :class="stock.pchange >= 0 ? 'text-emerald-400' : 'text-rose-400'">
                             {{ stock.pchange >= 0 ? '▲' : '▼' }} {{ Math.abs(stock.pchange).toFixed(2) }}%
@@ -158,7 +158,7 @@
                     <div v-for="stock in marketData.idx" :key="'dup'+stock.symbol"
                         @click="selectSuggestion(stock.symbol)"
                         class="ticker-item flex items-center gap-2 px-6 border-r border-slate-800 cursor-pointer hover:bg-slate-800/80 transition-colors">
-                        <span class="font-bold text-slate-200 text-sm">{{ stock.symbol }}</span>
+                        <span class="font-bold text-slate-200 text-sm">{{ cleanTicker(stock.symbol) }}</span>
                         <span class="font-mono text-xs font-bold"
                             :class="stock.pchange >= 0 ? 'text-emerald-400' : 'text-rose-400'">
                             {{ stock.pchange >= 0 ? '▲' : '▼' }} {{ Math.abs(stock.pchange).toFixed(2) }}%
@@ -341,13 +341,23 @@
                                 <div class="space-y-1.5 break-inside-avoid">
                                     <div v-for="(tp, idx) in tradePlan.targets.tp_list" :key="idx" class="flex justify-between items-center bg-slate-900 px-2.5 py-1.5 rounded border border-slate-700/50">
                                         <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">TP {{ idx + 1 }}</span>
-                                        <span class="font-mono font-bold text-emerald-400">{{ formatNumber(tp) }}</span>
+                                        <div class="flex items-center gap-2">
+                                            <span class="font-mono font-bold text-white text-xs">{{ formatNumber(tp, tradeSimTicker) }}</span>
+                                            <span class="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300">
+                                                {{ getGainPct(tp, tradePlan.avg_price) }}
+                                            </span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                             <div class="bg-slate-800 rounded-lg p-3">
                                 <div class="text-xs text-slate-500 mb-1">Cut Loss Limit</div>
-                                <div class="font-mono font-bold text-rose-400">{{ formatNumber(tradePlan.targets.cl) }}</div>
+                                <div class="flex items-center gap-2">
+                                    <span class="font-mono font-bold text-rose-400">{{ formatNumber(tradePlan.targets.cl, tradeSimTicker) }}</span>
+                                    <span v-if="tradePlan.targets && tradePlan.targets.cl && tradePlan.avg_price" class="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300">
+                                        {{ getLossPct(tradePlan.targets.cl, tradePlan.avg_price) }}
+                                    </span>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -364,7 +374,7 @@
                     <div v-for="stock in marketData.nasdaq" :key="stock.symbol"
                         @click="selectSuggestion(stock.symbol)"
                         class="ticker-item flex items-center gap-2 px-6 border-r border-slate-800 cursor-pointer hover:bg-slate-800/80 transition-colors">
-                        <span class="font-bold text-slate-200 text-sm">{{ stock.symbol }}</span>
+                        <span class="font-bold text-slate-200 text-sm">{{ cleanTicker(stock.symbol) }}</span>
                         <span class="font-mono text-xs font-bold"
                             :class="stock.pchange >= 0 ? 'text-emerald-400' : 'text-rose-400'">
                             {{ stock.pchange >= 0 ? '▲' : '▼' }} {{ Math.abs(stock.pchange).toFixed(2) }}%
@@ -373,7 +383,7 @@
                     <div v-for="stock in marketData.nasdaq" :key="'dup'+stock.symbol"
                         @click="selectSuggestion(stock.symbol)"
                         class="ticker-item flex items-center gap-2 px-6 border-r border-slate-800 cursor-pointer hover:bg-slate-800/80 transition-colors">
-                        <span class="font-bold text-slate-200 text-sm">{{ stock.symbol }}</span>
+                        <span class="font-bold text-slate-200 text-sm">{{ cleanTicker(stock.symbol) }}</span>
                         <span class="font-mono text-xs font-bold"
                             :class="stock.pchange >= 0 ? 'text-emerald-400' : 'text-rose-400'">
                             {{ stock.pchange >= 0 ? '▲' : '▼' }} {{ Math.abs(stock.pchange).toFixed(2) }}%
@@ -775,10 +785,12 @@
                                                     <div class="bg-slate-900/90 p-2.5 rounded-lg border border-rose-500/30 text-center">
                                                         <span class="text-slate-400 text-[9px] block uppercase font-sans font-bold tracking-wider mb-0.5">Batas Cut Loss (SL)</span>
                                                         <span class="text-rose-400 font-extrabold text-sm">&lt; {{ formatNumber(entryPlan.best_setup.cl_target) }}</span>
+                                                        <span class="text-[10px] font-mono text-rose-400/90 block mt-0.5 font-semibold">({{ getLossPct(entryPlan.best_setup.cl_target, entryPlan.best_setup.entry_target) }})</span>
                                                     </div>
                                                     <div class="bg-slate-900/90 p-2.5 rounded-lg border border-emerald-500/30 text-center">
                                                         <span class="text-slate-400 text-[9px] block uppercase font-sans font-bold tracking-wider mb-0.5">Target Take Profit (TP)</span>
                                                         <span class="text-emerald-400 font-extrabold text-sm">{{ formatNumber(entryPlan.best_setup.tp_target) }}</span>
+                                                        <span class="text-[10px] font-mono text-emerald-400/90 block mt-0.5 font-semibold">({{ getGainPct(entryPlan.best_setup.tp_target, entryPlan.best_setup.entry_target) }})</span>
                                                     </div>
                                                     <div class="bg-slate-900/90 p-2.5 rounded-lg border border-cyan-500/30 text-center">
                                                         <span class="text-slate-400 text-[9px] block uppercase font-sans font-bold tracking-wider mb-0.5">Risk / Reward Setup</span>
@@ -810,8 +822,17 @@
                                             </p>
                                             <div class="space-y-2">
                                                 <div v-for="(tp, idx) in (entryPlan.targets && entryPlan.targets.tp_list ? entryPlan.targets.tp_list : [])" :key="idx" class="flex justify-between items-center bg-slate-900/60 py-2.5 px-4 rounded-lg border border-slate-700/50 hover:border-emerald-500/30 transition-colors">
-                                                    <span class="text-xs font-bold text-slate-400">TP {{ idx + 1 }}</span>
-                                                    <span class="font-mono font-bold text-emerald-400 text-sm">{{ formatNumber(tp) }}</span>
+                                                    <div class="w-14">
+                                                        <span class="text-xs font-bold text-slate-400">TP {{ idx + 1 }}</span>
+                                                    </div>
+                                                    <div class="flex-1 text-right pr-3">
+                                                        <span class="font-mono font-bold text-white text-sm">{{ formatNumber(tp) }}</span>
+                                                    </div>
+                                                    <div class="w-20 text-right">
+                                                        <span class="inline-block text-xs font-mono font-bold px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 shadow-sm">
+                                                            {{ getGainPct(tp, entryPlan.current_price) }}
+                                                        </span>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
@@ -822,7 +843,12 @@
                                             </p>
                                             <div class="bg-rose-500/10 border border-rose-500/20 rounded-xl flex flex-col items-center justify-center p-6 mt-auto mb-auto">
                                                 <span class="font-mono font-black text-3xl text-rose-400">{{ formatNumber(entryPlan.targets ? entryPlan.targets.cl : 0) }}</span>
-                                                <span class="text-[10px] text-slate-400 mt-1 uppercase font-semibold">Toleransi Resiko Proteksi Modal</span>
+                                                <div v-if="entryPlan.targets && entryPlan.targets.cl && entryPlan.current_price" class="mt-2.5">
+                                                    <span class="text-xs font-mono font-bold px-3 py-1 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/40 shadow-sm">
+                                                        Potensi Risiko: {{ getLossPct(entryPlan.targets.cl, entryPlan.current_price) }}
+                                                    </span>
+                                                </div>
+                                                <span class="text-[10px] text-slate-400 mt-2 uppercase font-semibold">Toleransi Resiko Proteksi Modal</span>
                                             </div>
                                         </div>
                                     </div>
@@ -969,7 +995,7 @@
     </div>
 
     <!-- App Logic -->
-    <script src="/static/app.js?v=11"></script>
+    <script src="/static/app.js?v=12"></script>
 </body>
 
 </html>

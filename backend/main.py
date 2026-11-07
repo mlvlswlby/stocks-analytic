@@ -183,6 +183,7 @@ KNOWN_LOGOS = {
     "META": "https://s3-symbol-logo.tradingview.com/meta--big.svg",
     "NFLX": "https://s3-symbol-logo.tradingview.com/netflix--big.svg",
     "AMD": "https://s3-symbol-logo.tradingview.com/advanced-micro-devices--big.svg",
+    "SPCE": "https://s3-symbol-logo.tradingview.com/virgin-galactic--big.svg",
     "INTC": "https://s3-symbol-logo.tradingview.com/intel--big.svg",
     "ORCL": "https://s3-symbol-logo.tradingview.com/oracle--big.svg",
     "CRM": "https://s3-symbol-logo.tradingview.com/salesforce--big.svg",
@@ -218,8 +219,8 @@ for _sym in [
 def normalize_ticker(ticker: str) -> str:
     """
     Normalizes user input ticker:
-    - If it's an Indonesian ticker (without .JK), appends .JK for Yahoo Finance
-    - Retains US and international tickers as-is
+    - If it's a known Indonesian ticker in KNOWN_IDX_SYMBOLS, appends .JK for Yahoo Finance
+    - Otherwise preserves the ticker as-is
     """
     if not ticker:
         return ""
@@ -229,10 +230,6 @@ def normalize_ticker(ticker: str) -> str:
     clean = t.replace(".JK", "")
     if clean in KNOWN_IDX_SYMBOLS:
         return f"{clean}.JK"
-    if len(clean) == 4 and clean.isalpha():
-        us_match = any(s["symbol"] == clean for s in STOCKS_DB if not s["symbol"].endswith(".JK"))
-        if not us_match:
-            return f"{clean}.JK"
     return t
 
 @app.get("/api/search")
@@ -425,20 +422,37 @@ def get_market_summary():
     return clean_nans(TOP_20_CACHE)
 
 def get_stock_data(ticker: str, period="2y", interval="1d"):
-    norm_ticker = normalize_ticker(ticker)
-    stock = yf.Ticker(norm_ticker)
-    df = stock.history(period=period, interval=interval)
+    raw = ticker.strip().upper()
     
-    # Fallback for 4-letter Indonesian stocks if not recognized initially
-    if df.empty and not norm_ticker.endswith(".JK") and len(norm_ticker) == 4:
-        alt_ticker = f"{norm_ticker}.JK"
-        alt_stock = yf.Ticker(alt_ticker)
-        alt_df = alt_stock.history(period=period, interval=interval)
-        if not alt_df.empty:
-            return alt_stock, alt_df
+    # Generate prioritized candidate tickers:
+    # 1. If explicitly ends with .JK, try with .JK first, then fallback to without .JK
+    # 2. If in KNOWN_IDX_SYMBOLS, try with .JK first, then fallback to without .JK
+    # 3. Otherwise try exact symbol first (Global / US stock), then fallback to .JK (Indonesian stock)
+    if raw.endswith(".JK"):
+        candidates = [raw, raw.replace(".JK", "")]
+    elif raw in KNOWN_IDX_SYMBOLS:
+        candidates = [f"{raw}.JK", raw]
+    else:
+        candidates = [raw]
+        if len(raw) == 4 and raw.isalpha():
+            candidates.append(f"{raw}.JK")
 
-    if df.empty:
-        raise HTTPException(status_code=404, detail="Stock data not found")
+    stock = None
+    df = pd.DataFrame()
+
+    for cand in candidates:
+        try:
+            s = yf.Ticker(cand)
+            d = s.history(period=period, interval=interval)
+            if not d.empty:
+                stock = s
+                df = d
+                break
+        except Exception:
+            continue
+
+    if df.empty or stock is None:
+        raise HTTPException(status_code=404, detail=f"Stock data not found for {ticker}")
         
     return stock, df
 
@@ -686,7 +700,7 @@ def resolve_company_profile(ticker: str, stock, df: pd.DataFrame) -> dict:
 
 @app.get("/api/stock/{ticker}")
 def get_stock_details(ticker: str):
-    stock, df = get_stock_data(ticker, period="1d")
+    stock, df = get_stock_data(ticker, period="5d")
     profile = resolve_company_profile(ticker, stock, df)
     return clean_nans(profile)
 
@@ -861,12 +875,11 @@ def get_chart_data(ticker: str, range: str = "1y"):
 
 @app.get("/api/analyze-trade")
 def analyze_trade(ticker: str, avg_price: float, start_date: str = None):
-    # Fetch ample history for analysis
-    # We use '2y' to ensure enough data for SMA200 and support/resistance
     stock, df = get_stock_data(ticker, period="2y") 
-    df = calculate_technicals(df) # Ensure indicators are present
-    
-    plan = generate_trade_plan(df, avg_price, start_date, ticker=ticker)
+    df = calculate_technicals(df)
+    actual_ticker = stock.ticker if hasattr(stock, 'ticker') and stock.ticker else ticker
+    is_idx = actual_ticker.endswith(".JK")
+    plan = generate_trade_plan(df, avg_price, start_date, ticker=actual_ticker, is_idx=is_idx)
     return clean_nans(plan)
 
 @app.get("/api/stock/{ticker}/entry-plan")
@@ -874,8 +887,9 @@ def get_entry_plan(ticker: str):
     try:
         stock, df = get_stock_data(ticker, period="2y") 
         df = calculate_technicals(df) 
-        
-        plan = generate_entry_plan(df, ticker=ticker)
+        actual_ticker = stock.ticker if hasattr(stock, 'ticker') and stock.ticker else ticker
+        is_idx = actual_ticker.endswith(".JK")
+        plan = generate_entry_plan(df, ticker=actual_ticker, is_idx=is_idx)
         return clean_nans(plan)
     except Exception as e:
         import traceback
