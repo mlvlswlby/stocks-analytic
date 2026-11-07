@@ -3,6 +3,7 @@ import pandas as pd
 import pandas_ta as ta
 import numpy as np
 from scipy.signal import argrelextrema
+import math
 
 def calculate_technicals(df: pd.DataFrame):
     """
@@ -250,15 +251,200 @@ def calculate_seasonal(df: pd.DataFrame):
             
     return seasonal_data
 
-def generate_trade_plan(df: pd.DataFrame, avg_price: float, buy_date: str = None):
+def is_idx_symbol(ticker: str = None) -> bool:
+    """Detects whether a ticker belongs to the Indonesian Stock Exchange (IDX)."""
+    if not ticker:
+        return False
+    t = str(ticker).strip().upper()
+    if t.endswith(".JK") or t.endswith(".ID"):
+        return True
+    clean = t.replace(".JK", "")
+    if len(clean) == 4 and clean.isalpha():
+        US_COMMON = {
+            "AAPL", "MSFT", "GOOG", "NVDA", "META", "AMZN", "INTC", "TSLA",
+            "NFLX", "AMD", "QCOM", "AVGO", "CSCO", "PYPL", "ADBE", "CMCSA", "PEP", "COST"
+        }
+        if clean not in US_COMMON:
+            return True
+    return False
+
+def round_to_market_tick(price: float, is_idx: bool = False) -> float:
+    """
+    Rounds prices to legitimate market tick fractions:
+    - For IDX: Follows official Bursa Efek Indonesia (BEI) discrete tick fractions.
+    - For US / Global: Standard currency cents (2 decimal places).
+    """
+    if price is None or math.isnan(price) or price <= 0:
+        return price
+    if not is_idx:
+        return round(float(price), 2)
+    
+    # Official BEI / IDX Fraksi Harga:
+    # < 200: Rp 1
+    # 200 - < 500: Rp 2
+    # 500 - < 2000: Rp 5
+    # 2000 - < 5000: Rp 10
+    # >= 5000: Rp 25
+    if price < 200:
+        tick = 1.0
+    elif price < 500:
+        tick = 2.0
+    elif price < 2000:
+        tick = 5.0
+    elif price < 5000:
+        tick = 10.0
+    else:
+        tick = 25.0
+    return float(round(price / tick) * tick)
+
+def cluster_support_resistance(df: pd.DataFrame, current_price: float, is_idx: bool = False, window_days: int = 150):
+    """
+    Identifies significant support and resistance zones using multi-touch swing highs and lows,
+    incorporating the Polarity Principle (broken supports become resistances),
+    and clusters nearby levels within a 3.0% threshold into consolidated key price zones with touch counts.
+    Returns: (supports: list, resistances: list, s1: float, s2: float)
+    """
+    if df.empty or len(df) < 5:
+        s1 = round_to_market_tick(current_price * 0.95, is_idx)
+        s2 = round_to_market_tick(current_price * 0.90, is_idx)
+        return [], [], s1, s2
+
+    window = df.iloc[-min(window_days, len(df)):].copy()
+    highs = window['High'].values
+    lows = window['Low'].values
+    
+    raw_levels = []
+    
+    # Multi-order extrema detection (macro swings order=5, micro swings order=3)
+    orders = [5, 3] if len(window) >= 30 else [max(1, len(window) // 6)]
+    for ord_val in orders:
+        if len(window) > ord_val * 2:
+            try:
+                res_idx = argrelextrema(highs, np.greater, order=ord_val)[0]
+                sup_idx = argrelextrema(lows, np.less, order=ord_val)[0]
+                for idx in res_idx:
+                    raw_levels.append({"price": float(highs[idx]), "type": "high", "weight": ord_val})
+                for idx in sup_idx:
+                    raw_levels.append({"price": float(lows[idx]), "type": "low", "weight": ord_val})
+            except Exception:
+                pass
+                
+    # Add absolute extremes of the window
+    raw_levels.append({"price": float(np.nanmax(highs)), "type": "high", "weight": 5})
+    raw_levels.append({"price": float(np.nanmin(lows)), "type": "low", "weight": 5})
+    
+    # Filter out NaNs and non-positive prices
+    raw_levels = [item for item in raw_levels if item["price"] > 0 and not np.isnan(item["price"])]
+    raw_levels.sort(key=lambda x: x["price"])
+    
+    # Cluster nearby levels within 3.0% threshold
+    clusters = []
+    threshold = 0.03
+    for item in raw_levels:
+        p = item["price"]
+        added = False
+        for c in clusters:
+            center = sum(x["price"] for x in c["items"]) / len(c["items"])
+            if abs(p - center) / center <= threshold:
+                c["items"].append(item)
+                added = True
+                break
+        if not added:
+            clusters.append({"items": [item]})
+
+    consolidated = []
+    for c in clusters:
+        prices = [x["price"] for x in c["items"]]
+        touches = len(c["items"])
+        avg_p = sum(prices) / len(prices)
+        if avg_p >= current_price:
+            rep = max(prices)  # ceiling / resistance zone boundary
+        else:
+            rep = min(prices)  # floor / support zone boundary
+        rep_tick = round_to_market_tick(rep, is_idx)
+        consolidated.append({
+            "rep_price": rep_tick,
+            "touches": touches,
+            "min": min(prices),
+            "max": max(prices)
+        })
+
+    # Separate into supports and resistances
+    # Support must be below current price (buffer of at least 1%)
+    supports = [c for c in consolidated if c["rep_price"] < current_price * 0.99]
+    supports.sort(key=lambda x: x["rep_price"], reverse=True) # Nearest support first
+
+    # Resistance must be above current price (buffer of at least 1.5%)
+    resistances = [c for c in consolidated if c["rep_price"] > current_price * 1.015]
+    resistances.sort(key=lambda x: x["rep_price"]) # Nearest resistance first
+
+    # Determine Primary Support (s1) and Secondary Support (s2)
+    s1 = supports[0]["rep_price"] if supports else round_to_market_tick(current_price * 0.95, is_idx)
+    s2 = supports[1]["rep_price"] if len(supports) > 1 else round_to_market_tick(s1 * 0.95, is_idx)
+
+    return supports, resistances, s1, s2
+
+def build_take_profit_levels(resistances: list, current_price: float, s1: float, window_high: float, is_idx: bool = False, min_spacing: float = 0.035) -> list:
+    """
+    Builds a list of 5 well-spaced, progressive Take Profit targets.
+    Guarantees that each consecutive TP is at least min_spacing (3.5%+) above the previous one,
+    eliminating redundant close targets (e.g. 438 and 440).
+    If there are fewer than 5 structural resistance zones, expands with Fibonacci extensions.
+    """
+    tp_list = []
+    for r in resistances:
+        cand = r["rep_price"]
+        if not tp_list:
+            if cand >= current_price * 1.02:
+                tp_list.append(cand)
+        else:
+            prev_tp = tp_list[-1]
+            if (cand - prev_tp) / prev_tp >= min_spacing:
+                tp_list.append(cand)
+                
+    # Expand with Fibonacci extensions if less than 5 targets
+    if len(tp_list) < 5:
+        ref_high = max(window_high, (tp_list[-1] if tp_list else current_price))
+        diff = ref_high - s1
+        if diff <= 0:
+            diff = current_price * 0.15
+            
+        fib_ratios = [1.272, 1.414, 1.618, 2.0, 2.618]
+        for f in fib_ratios:
+            if len(tp_list) >= 5:
+                break
+            proj = round_to_market_tick(s1 + (diff * f), is_idx)
+            last_tp = tp_list[-1] if tp_list else current_price
+            if (proj - last_tp) / last_tp >= min_spacing and proj > current_price * 1.02:
+                tp_list.append(proj)
+                
+    # If still less than 5, use percentage expansion
+    pct_steps = [0.05, 0.10, 0.15, 0.22, 0.30, 0.40, 0.50]
+    for step in pct_steps:
+        if len(tp_list) >= 5:
+            break
+        proj = round_to_market_tick(current_price * (1 + step), is_idx)
+        last_tp = tp_list[-1] if tp_list else current_price
+        if (proj - last_tp) / last_tp >= min_spacing:
+            tp_list.append(proj)
+            
+    # Return exactly top 5, sorted ascending
+    tp_list.sort()
+    return tp_list[:5]
+
+def generate_trade_plan(df: pd.DataFrame, avg_price: float, buy_date: str = None, ticker: str = None):
     """
     Generates a trade plan (TP, CL, Action) based on average price and current technicals.
+    Uses multi-touch support/resistance clustering and progressive spacing for TP.
     """
     if df.empty:
         return {}
 
+    is_idx = is_idx_symbol(ticker)
     last = df.iloc[-1]
-    current_price = last['Close']
+    current_price = float(last['Close'])
+    current_price_clean = round_to_market_tick(current_price, is_idx)
+    avg_price_clean = round_to_market_tick(avg_price, is_idx)
     
     # Calculate P/L
     pl_pct = ((current_price - avg_price) / avg_price) * 100
@@ -266,51 +452,19 @@ def generate_trade_plan(df: pd.DataFrame, avg_price: float, buy_date: str = None
     # Identify market phase
     trend = determine_market_trend(df)
     
-    # Support & Resistance (Simple Local Extrema)
-    # Get last 6 months for Support/Resistance
-    window = df.iloc[-126:].copy()
+    # Identify Support & Resistance Clusters
+    supports, resistances, s1, s2 = cluster_support_resistance(df, current_price, is_idx=is_idx)
+    window_high = float(df.iloc[-150:]['High'].max()) if len(df) >= 150 else float(df['High'].max())
     
-    # Find peaks (Resistance) and troughs (Support)
-    # order=5 means local max/min over 10 days window (5 each side)
-    res_indices = argrelextrema(window['High'].values, np.greater, order=5)[0]
-    sup_indices = argrelextrema(window['Low'].values, np.less, order=5)[0]
+    # Take Profit targets strictly above both avg_price and current_price (or base reference)
+    base_ref = max(avg_price, current_price)
+    tp_list = build_take_profit_levels(resistances, base_ref, s1, window_high, is_idx=is_idx)
     
-    resistances = window['High'].iloc[res_indices].sort_values(ascending=True).values
-    supports = window['Low'].iloc[sup_indices].sort_values(ascending=True).values
-    
-    # Filter levels relevant to the input Average Price
-    # Nearest Resistance ABOVE the average price (so it's actually a profit)
-    upper_levels = [r for r in resistances if r > avg_price * 1.01] # 1% buffer over avg_price
-    # Nearest Support BELOW the average price
-    lower_levels = [s for s in supports if s < avg_price * 0.99] # 1% buffer under avg_price
-    
-    # Define Targets
-    tp_list = list(upper_levels[:5])  # Cap at max 5 historical resistances above purchase price
-    
-    if not tp_list:
-        # If no historical ceilings above purchase price, calculate Fibonacci Extensions
-        recent_high = window['High'].max()
-        recent_low = window['Low'].min()
-        diff = recent_high - recent_low
-        
-        # Prevent zero-variance failure
-        if diff <= 0:
-            diff = avg_price * 0.10
-            
-        # Standard Fibonacci Extension cluster multiples
-        fib_multiples = [1.618, 2.618, 3.618, 4.236, 5.236, 6.236, 7.236]
-        fib_levels = [recent_low + (diff * m) for m in fib_multiples]
-        
-        # Filter Fib levels that are strictly higher than avg_price
-        tp_list = [f for f in fib_levels if f > avg_price * 1.01][:5]
-        
-        if not tp_list:
-            # Mathematical safety net
-            tp_list = [avg_price * 1.05, avg_price * 1.10, avg_price * 1.15]
-            
-    # For Cut Loss, take the nearest local support below the purchase price
-    cl = lower_levels[-1] if len(lower_levels) > 0 else avg_price * 0.95
-    if cl >= avg_price: cl = avg_price * 0.95
+    # Cut loss: nearest strong support below purchase price
+    lower_supports = [s["rep_price"] for s in supports if s["rep_price"] < avg_price * 0.99]
+    cl = lower_supports[0] if lower_supports else round_to_market_tick(avg_price * 0.95, is_idx)
+    if cl >= avg_price or cl <= 0:
+        cl = round_to_market_tick(avg_price * 0.95, is_idx)
     
     # Action Logic
     action = "HOLD"
@@ -355,9 +509,9 @@ def generate_trade_plan(df: pd.DataFrame, avg_price: float, buy_date: str = None
                 reason = "Loss exceeds risk threshold (-7%) despite trend."
 
     return {
-        "current_price": current_price,
-        "avg_price": avg_price,
-        "pl_pct": pl_pct,
+        "current_price": current_price_clean,
+        "avg_price": avg_price_clean,
+        "pl_pct": round(pl_pct, 2),
         "action": action,
         "reason": reason,
         "market_trend": trend,
@@ -367,63 +521,36 @@ def generate_trade_plan(df: pd.DataFrame, avg_price: float, buy_date: str = None
         }
     }
 
-def generate_entry_plan(df: pd.DataFrame):
+def generate_entry_plan(df: pd.DataFrame, ticker: str = None):
     """
     Generates a trading plan specifically for BUYING at the current price.
-    Purely technical analysis (price action, chart patterns, support/resistance, Fibonacci).
-    Returns: TP targets, CL limit, RR ratio, Candlestick patterns, and Entry Status.
+    Purely technical analysis (price action, chart patterns, support/resistance clustering, Fibonacci).
+    Returns: TP targets, CL limit, RR ratio, Candlestick patterns, and Tactical Best Setup.
     """
     if df.empty:
         return {}
 
+    is_idx = is_idx_symbol(ticker)
     last = df.iloc[-1]
     current_price = float(last['Close'])
+    current_price_clean = round_to_market_tick(current_price, is_idx)
     
-    # Identify market phase
+    # Identify market phase & candle patterns
     trend = determine_market_trend(df)
     candle_patterns = detect_candle_patterns(df)
     active_patterns = [name for name, present in candle_patterns.items() if present]
     
-    # Calculate Support & Resistance for the last 6 months (~126 trading days)
-    window = df.iloc[-126:].copy()
+    # Calculate Support & Resistance clusters
+    supports, resistances, s1, s2 = cluster_support_resistance(df, current_price, is_idx=is_idx)
+    window_high = float(df.iloc[-150:]['High'].max()) if len(df) >= 150 else float(df['High'].max())
     
-    # Adaptive order to prevent crash on small dataframes
-    order_val = min(5, max(1, len(window) // 6)) if len(window) >= 4 else 1
+    # Build Take Profit levels with progressive minimum distance
+    tp_list = build_take_profit_levels(resistances, current_price, s1, window_high, is_idx=is_idx)
     
-    try:
-        res_indices = argrelextrema(window['High'].values, np.greater, order=order_val)[0]
-        sup_indices = argrelextrema(window['Low'].values, np.less, order=order_val)[0]
-        resistances = window['High'].iloc[res_indices].sort_values(ascending=True).values
-        supports = window['Low'].iloc[sup_indices].sort_values(ascending=True).values
-    except Exception:
-        resistances = np.array([])
-        supports = np.array([])
-    
-    # Take Profit levels must be above current price (+1% minimum)
-    upper_levels = [float(r) for r in resistances if r > current_price * 1.01] 
-    # Cut Loss levels must be below current price (-1% minimum)
-    lower_levels = [float(s) for s in supports if s < current_price * 0.99]
-    
-    tp_list = list(upper_levels[:5])
-    
-    # If no structural resistance above, project target via Fibonacci extensions
-    if not tp_list:
-        recent_high = float(window['High'].max())
-        recent_low = float(window['Low'].min())
-        diff = recent_high - recent_low
-        if diff <= 0: 
-            diff = current_price * 0.10
-        
-        fib_multiples = [1.618, 2.618, 3.618, 4.236]
-        fib_levels = [recent_low + (diff * m) for m in fib_multiples]
-        tp_list = [float(f) for f in fib_levels if f > current_price * 1.01][:5]
-        if not tp_list:
-            tp_list = [current_price * 1.05, current_price * 1.10, current_price * 1.15]
-            
-    # Stop Loss on nearest key support level
-    cl = float(lower_levels[-1]) if len(lower_levels) > 0 else (current_price * 0.95)
+    # Stop Loss placed just below key primary support level (s1)
+    cl = round_to_market_tick(s1 * 0.97, is_idx)
     if cl >= current_price or cl <= 0:
-        cl = current_price * 0.95
+        cl = round_to_market_tick(current_price * 0.95, is_idx)
     
     # Assess Entry Status based purely on structure/trend & candlestick patterns
     setup_status = "GOOD SETUP"
@@ -446,56 +573,38 @@ def generate_entry_plan(df: pd.DataFrame):
         reason = f"Harga berada di area akumulasi bawah (bottoming) dengan potensi reward yang menarik relatif terhadap risiko.{pattern_note}"
         
     # Calculate basic Risk/Reward Ratio using the first TP
-    risk = current_price - cl
-    reward = tp_list[0] - current_price if tp_list else 0
+    risk = current_price_clean - cl
+    reward = tp_list[0] - current_price_clean if tp_list else 0
     rr_ratio = float(reward / risk) if risk > 0 else 0.0
     
     if rr_ratio < 1.0 and trend not in ["Bearish", "Distribution"]:
          setup_status = "POOR RISK/REWARD"
          setup_color = "amber"
-         reason = f"Trend teknikal cukup baik, namun potensi profit ke resisten terdekat ({round(tp_list[0], 2)}) lebih kecil dibanding batas risiko cut loss ({round(cl, 2)}). R/R kurang optimal.{pattern_note}"
+         reason = f"Trend teknikal cukup baik, namun potensi profit ke resisten terdekat ({tp_list[0]}) lebih kecil dibanding batas risiko cut loss ({cl}). R/R kurang optimal.{pattern_note}"
     
-    # Clean rounding
-    tp_list_clean = [round(float(tp), 2) for tp in tp_list]
-    cl_clean = round(float(cl), 2)
-    current_price_clean = round(float(current_price), 2)
-    
-    tp1 = tp_list_clean[0] if tp_list_clean else round(current_price * 1.05, 2)
-    tp2 = tp_list_clean[1] if len(tp_list_clean) > 1 else None
+    tp1 = tp_list[0] if tp_list else round_to_market_tick(current_price * 1.05, is_idx)
+    tp2 = tp_list[1] if len(tp_list) > 1 else None
 
     # --- TACTICAL BEST SETUP: Target Price for Entry (Support Retest / Pullback) ---
-    s1 = float(lower_levels[-1]) if len(lower_levels) > 0 else None
-    s2 = float(lower_levels[-2]) if len(lower_levels) > 1 else None
-    
-    if s1:
-        dist_pct = (current_price - s1) / current_price * 100.0
-        if dist_pct <= 1.5:
-            # Price is already resting right at key support
-            best_entry = current_price
-            strategy_label = "Buy on Support"
-            is_pullback = False
-        else:
-            # Price has extended away; optimal entry is to wait for pullback to support
-            best_entry = s1
-            strategy_label = "Buy on Pullback / Retest Support"
-            is_pullback = True
-            
-        # Cut Loss for best setup placed just under support
-        if s2 and s2 >= s1 * 0.92:
-            best_cl = round(s2 * 0.99, 2)
-        else:
-            best_cl = round(best_entry * 0.97, 2)
+    dist_to_s1_pct = (current_price - s1) / current_price * 100.0 if current_price > 0 else 0
+    if dist_to_s1_pct <= 1.5 and dist_to_s1_pct >= -1.0:
+        # Price is already resting right at key support
+        best_entry = current_price_clean
+        strategy_label = "Buy on Support"
+        is_pullback = False
+        best_cl = round_to_market_tick(s1 * 0.97, is_idx)
     else:
-        best_entry = round(current_price * 0.96, 2)
-        best_cl = round(best_entry * 0.96, 2)
-        strategy_label = "Buy on Pullback Discount"
+        # Price has extended away; optimal entry is to wait for pullback to key support
+        best_entry = s1
+        strategy_label = "Buy on Pullback / Retest Support"
         is_pullback = True
-
+        best_cl = round_to_market_tick(s1 * 0.97, is_idx)
+        
     if best_cl >= best_entry:
-        best_cl = round(best_entry * 0.96, 2)
+        best_cl = round_to_market_tick(best_entry * 0.96, is_idx)
 
-    target_entry_clean = round(float(best_entry), 2)
-    target_cl_clean = round(float(best_cl), 2)
+    target_entry_clean = round_to_market_tick(best_entry, is_idx)
+    target_cl_clean = round_to_market_tick(best_cl, is_idx)
     best_tp1 = tp1
     best_tp2 = tp2
 
@@ -504,27 +613,39 @@ def generate_entry_plan(df: pd.DataFrame):
     bs_reward = best_tp1 - target_entry_clean
     best_rr = round(bs_reward / bs_risk, 2) if bs_risk > 0 else 0.0
 
+    # Format numbers for readable text descriptions
+    def fmt_price(val):
+        if is_idx:
+            return f"Rp {int(val):,}".replace(",", ".")
+        return f"${val:,.2f}"
+
+    curr_p_str = fmt_price(current_price_clean)
+    entry_p_str = fmt_price(target_entry_clean)
+    cl_p_str = fmt_price(target_cl_clean)
+    tp1_str = fmt_price(best_tp1)
+    tp2_str = f" dan TP 2 {fmt_price(best_tp2)}" if best_tp2 else ""
+
     # Actionable Formulated Description
     if trend in ["Bearish", "Distribution"]:
         best_setup_desc = (
-            f"Saham sedang dalam fase {trend}. Hindari membeli langsung di harga sekarang ({current_price_clean})! "
-            f"Best Setup: Disarankan menunggu antri beli ketika harga menyentuh support di Rp {target_entry_clean}. "
-            f"Selama harga bertahan di atas Cut Loss Rp {target_cl_clean}, potensi pantulan teknikal menuju TP 1 Rp {best_tp1}"
-            f"{f' dan TP 2 Rp {best_tp2}' if best_tp2 else ''} terbuka dengan Risk/Reward {best_rr}x. Wajib Cut Loss jika tembus di bawah Rp {target_cl_clean}."
+            f"Saham sedang dalam fase {trend}. Hindari membeli langsung di harga sekarang ({curr_p_str})! "
+            f"Best Setup: Disarankan menunggu antri beli ketika harga menyentuh support kuat di {entry_p_str}. "
+            f"Selama harga bertahan di atas Cut Loss {cl_p_str}, potensi pantulan teknikal menuju TP 1 {tp1_str}"
+            f"{tp2_str} terbuka dengan Risk/Reward {best_rr}x. Wajib Cut Loss jika tembus di bawah {cl_p_str}."
         )
     elif is_pullback:
         best_setup_desc = (
-            f"Best Setup ({strategy_label}): Harga saat ini ({current_price_clean}) sudah naik di atas support. "
-            f"Disarankan jangan mengejar harga, melainkan tunggu atau antri beli pada target harga Rp {target_entry_clean} (area support terdekat). "
-            f"Selama harga mampu bertahan di atas batas Cut Loss Rp {target_cl_clean}, potensi kenaikan menuju TP 1 Rp {best_tp1}"
-            f"{f' hingga TP 2 Rp {best_tp2}' if best_tp2 else ''} sangat optimal dengan Risk/Reward {best_rr}x."
+            f"Best Setup ({strategy_label}): Harga saat ini ({curr_p_str}) sudah naik di atas support. "
+            f"Disarankan jangan mengejar harga, melainkan tunggu atau antri beli pada target harga {entry_p_str} (area support kuat). "
+            f"Selama harga mampu bertahan di atas batas Cut Loss {cl_p_str}, potensi kenaikan menuju TP 1 {tp1_str}"
+            f"{f' hingga TP 2 {fmt_price(best_tp2)}' if best_tp2 else ''} sangat optimal dengan Risk/Reward {best_rr}x."
         )
     else:
         best_setup_desc = (
-            f"Best Setup ({strategy_label}): Harga saat ini ({current_price_clean}) sudah berada tepat di bantalan support kuat. "
-            f"Disarankan entry beli di target harga Rp {target_entry_clean}. "
-            f"Selama harga bertahan di atas batas Cut Loss Rp {target_cl_clean}, potensi kenaikan menuju TP 1 Rp {best_tp1}"
-            f"{f' hingga TP 2 Rp {best_tp2}' if best_tp2 else ''} sangat menjanjikan dengan Risk/Reward {best_rr}x."
+            f"Best Setup ({strategy_label}): Harga saat ini ({curr_p_str}) sudah berada tepat di bantalan support kuat. "
+            f"Disarankan entry beli di target harga {entry_p_str}. "
+            f"Selama harga bertahan di atas batas Cut Loss {cl_p_str}, potensi kenaikan menuju TP 1 {tp1_str}"
+            f"{f' hingga TP 2 {fmt_price(best_tp2)}' if best_tp2 else ''} sangat menjanjikan dengan Risk/Reward {best_rr}x."
         )
 
     return {
@@ -545,7 +666,7 @@ def generate_entry_plan(df: pd.DataFrame):
             "description": best_setup_desc
         },
         "targets": {
-            "tp_list": tp_list_clean,
-            "cl": cl_clean
+            "tp_list": tp_list,
+            "cl": target_cl_clean
         }
     }

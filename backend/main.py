@@ -866,7 +866,7 @@ def analyze_trade(ticker: str, avg_price: float, start_date: str = None):
     stock, df = get_stock_data(ticker, period="2y") 
     df = calculate_technicals(df) # Ensure indicators are present
     
-    plan = generate_trade_plan(df, avg_price, start_date)
+    plan = generate_trade_plan(df, avg_price, start_date, ticker=ticker)
     return clean_nans(plan)
 
 @app.get("/api/stock/{ticker}/entry-plan")
@@ -875,7 +875,7 @@ def get_entry_plan(ticker: str):
         stock, df = get_stock_data(ticker, period="2y") 
         df = calculate_technicals(df) 
         
-        plan = generate_entry_plan(df)
+        plan = generate_entry_plan(df, ticker=ticker)
         return clean_nans(plan)
     except Exception as e:
         import traceback
